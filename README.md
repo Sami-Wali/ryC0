@@ -59,7 +59,10 @@ node Scripts/nightly.mjs install
 
 Every local commit or successful local merge then builds a Nightly, pushes the
 committed source to its branch, and uploads the IPA as a GitHub prerelease.
-Each release has its own `nightly-<date>-<commit>` tag and build number. Building
+Each release has its own `nightly-<date>-<commit>` tag and build number. After the
+uploaded IPA's size and SHA-256 match the local file, older Nightly releases,
+their tags, and old local Nightly build folders are removed. Only the latest
+published Nightly is retained; stable releases are preserved. Building
 uses an isolated checkout of that exact commit, so unsaved or uncommitted work
 does not enter the release. The Mac must be running for these local hooks to run.
 

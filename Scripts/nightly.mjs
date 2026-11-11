@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import { spawn, spawnSync } from 'node:child_process';
-import { copyFile, mkdir, open, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import { copyFile, mkdir, open, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repository = 'Sami-Wali/ryC0';
 const output = path.join(root, 'build/nightly');
+const nightlyTag = /^nightly-\d{8}-[a-f0-9]{8}$/;
 // Git exports repository-specific variables to hooks. They must not redirect
 // commands intended for the isolated build checkout into the user's checkout.
 const environment = { ...process.env };
@@ -99,6 +101,45 @@ async function install() {
   console.log('Local Nightly enabled after commits and local merges. Builds run on this Mac.');
 }
 
+export function nightlyRetentionPlan(releases) {
+  const nightlies = releases.filter((release) => nightlyTag.test(release.tag_name)
+    && release.prerelease === true && release.draft === false)
+    .sort((a, b) => Date.parse(b.published_at) - Date.parse(a.published_at) || b.id - a.id);
+  const newest = nightlies.findIndex((release) => release.assets?.some((asset) =>
+    asset.name === `ryC0-${release.tag_name}.ipa` && asset.state === 'uploaded' && asset.size > 0));
+  if (newest === -1) return null;
+  return { keep: nightlies[newest].tag_name, remove: nightlies.slice(newest + 1).map((release) => release.tag_name) };
+}
+
+export async function verifyPublishedNightly(tag, ipa, execute = run) {
+  const release = JSON.parse(await execute('gh', ['api', `repos/${repository}/releases/tags/${tag}`]));
+  const asset = release.assets?.find((candidate) => candidate.name === path.basename(ipa));
+  const digest = `sha256:${createHash('sha256').update(await readFile(ipa)).digest('hex')}`;
+  if (release.tag_name !== tag || release.draft || !release.prerelease
+      || asset?.state !== 'uploaded' || asset.size !== (await stat(ipa)).size || asset.digest !== digest) {
+    throw new Error('Could not verify the uploaded IPA; previous Nightly releases have been kept.');
+  }
+}
+
+export async function pruneNightlies(directory, execute = run) {
+  const pages = JSON.parse(await execute('gh', ['api', '--paginate', '--slurp', `repos/${repository}/releases?per_page=100`]));
+  const releases = pages.flat();
+  const plan = nightlyRetentionPlan(releases);
+  if (!plan) return;
+  const protectedTags = new Set(releases.filter((release) => !release.prerelease || release.draft).map((release) => release.tag_name));
+  for (const tag of plan.remove) {
+    await execute('gh', ['release', 'delete', tag, '--repo', repository, '--cleanup-tag', '--yes']);
+    console.log(`Removed previous Nightly: ${tag}`);
+  }
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !nightlyTag.test(entry.name) || entry.name === plan.keep || protectedTags.has(entry.name)) continue;
+    const folder = path.join(directory, entry.name);
+    const owned = await stat(path.join(folder, 'release.json')).catch(() => null)
+      ?? await stat(path.join(folder, 'build.log')).catch(() => null);
+    if (owned?.isFile()) await rm(folder, { recursive: true, force: true });
+  }
+}
+
 async function publish(auto) {
   if (process.platform !== 'darwin') {
     if (auto) return;
@@ -119,6 +160,7 @@ async function publish(auto) {
     const existing = await run('gh', ['release', 'view', tag, '--repo', repository, '--json', 'url,assets'], { quiet: true }).catch(() => '');
     if (existing && JSON.parse(existing).assets.some((asset) => asset.name.endsWith('.ipa'))) {
       console.log(`Nightly already published: ${JSON.parse(existing).url}`);
+      await pruneNightlies(output);
       return;
     }
     const origin = await run('git', ['remote', 'get-url', '--push', 'origin']);
@@ -165,6 +207,8 @@ async function publish(auto) {
         '--notes-file', notes]);
     }
     await writeFile(path.join(directory, 'release.json'), JSON.stringify({ commit, branch, tag, build, ipa, url }, null, 2) + '\n');
+    await verifyPublishedNightly(tag, ipa);
+    await pruneNightlies(output);
     console.log(`Nightly published: ${url}`);
   });
 }
