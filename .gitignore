@@ -1,0 +1,11 @@
+.theos/
+packages/
+.DS_Store
+*.xcscmblueprint
+*.xccheckout
+*.xcarchive
+xcuserdata
+Resources/Frameworks/OpenSSL.framework
+
+# Linux build (Scripts/ryc0)
+/build/
