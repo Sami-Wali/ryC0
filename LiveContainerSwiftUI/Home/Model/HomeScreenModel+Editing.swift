@@ -49,7 +49,9 @@ extension HomeScreenModel {
         }
         withAnimation(HomeDesign.modeChange) {
             isEditing = false
+            dockPage = visibleDockPage
         }
+        HomeLayoutStorage.saveDockPage(dockPage)
     }
 
     /// Ends edit mode when the wallpaper is tapped.
@@ -374,15 +376,16 @@ extension HomeScreenModel {
         others.remove(drag.item)
         // An iPad's dock glass fits its icons, so a dragged icon reaches the
         // dock where the glass would be with it inside, one place wider.
-        if metrics.dockContains(center, count: min(others.dock.count + 1, HomeLayout.dockCapacity)) {
-            guard others.dock.count < HomeLayout.dockCapacity else {
-                return drag.target
-            }
+        let dock = others.dockRange(on: visibleDockPage)
+        if metrics.dockContains(center, count: min(dock.count + 1, HomeLayout.dockIconsPerPage)) {
             guard let spot = dockIcon(near: center, in: drag.preview, metrics: metrics) else {
-                return .dock(0)
+                return .dock(dock.lowerBound)
             }
             let isBefore = metrics.isDockVertical ? center.y < spot.center.y : center.x < spot.center.x
-            return slot(beside: spot, isBefore: isBefore, among: others.dock, at: center, metrics: metrics) { .dock($0) }
+            let lastVisible = (visibleDockPage + 1) * HomeLayout.dockIconsPerPage - 1
+            return slot(beside: spot, isBefore: isBefore, among: others.dock, at: center, metrics: metrics) {
+                .dock(min($0, lastVisible))
+            }
         }
         let page = page ?? 0
         let othersOnPage = page < others.pages.count ? others.pages[page] : []
@@ -438,9 +441,9 @@ extension HomeScreenModel {
     /// The dock icon nearest to `center`, as `shown` has the icons, or nil
     /// when the dock is empty.
     private func dockIcon(near center: CGPoint, in shown: HomeLayout, metrics: HomeMetrics) -> HomeIconSpot? {
-        let count = shown.dock.count
-        let spots = shown.dock.indices.map { index in
-            HomeIconSpot(item: shown.dock[index], index: index, center: metrics.dockIconCenter(at: index, count: count))
+        let range = shown.dockRange(on: visibleDockPage)
+        let spots = range.map { index in
+            HomeIconSpot(item: shown.dock[index], index: index, center: metrics.dockIconCenter(at: index % HomeLayout.dockIconsPerPage, count: range.count))
         }
         return spots.min { first, second in
             hypot(first.center.x - center.x, first.center.y - center.y) < hypot(second.center.x - center.x, second.center.y - center.y)
@@ -461,7 +464,7 @@ extension HomeScreenModel {
         case .page(_, let index):
             metrics.iconCenter(at: index)
         case .dock(let index):
-            metrics.dockIconCenter(at: index, count: layout.dock.count)
+            metrics.dockIconCenter(at: index % HomeLayout.dockIconsPerPage, count: layout.dockRange(on: HomeLayout.dockPage(for: index)).count)
         case .folder(_, let index):
             folderIconCenter(at: index, metrics: metrics)
         }
@@ -509,7 +512,7 @@ extension HomeScreenModel {
             return nil
         }
         let shown = drag.preview
-        let spot = if metrics.dockContains(center, count: shown.dock.count) {
+        let spot = if metrics.dockContains(center, count: shown.dockRange(on: visibleDockPage).count) {
             dockIcon(near: center, in: shown, metrics: metrics)
         } else {
             pageIcon(near: center, in: shown, metrics: metrics)
@@ -598,7 +601,7 @@ extension HomeScreenModel {
     /// right side of the screen, and stops when it moves away.
     private func updatePageTurn(at finger: CGPoint, metrics: HomeMetrics) {
         let edge = HomeDesign.pageTurnEdge
-        let direction = if metrics.dockContains(finger, count: displayedLayout.dock.count) {
+        let direction = if metrics.dockContains(finger, count: displayedLayout.dockRange(on: visibleDockPage).count) {
             0
         } else if finger.x < edge {
             -1
@@ -684,7 +687,7 @@ extension HomeScreenModel {
 
     /// The question asked before an app is deleted.
     var removalTitle: String {
-        "zc.home.deleteTitle %@".localizeWithFormat(pendingRemoval?.displayName ?? "")
+        "ryc0.home.deleteTitle %@".localizeWithFormat(pendingRemoval?.displayName ?? "")
     }
 
     /// Deletes an app, and its data unless the person chose to keep it.

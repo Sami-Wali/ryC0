@@ -5,9 +5,9 @@
 
 import UIKit
 
-/// Makes what puts an app inside zContainer on the iPhone's own Home Screen:
+/// Makes what puts an app inside ryC0 on the iPhone's own Home Screen:
 /// a configuration profile with a web clip, whose icon opens the app in
-/// zContainer the way Add to Home Screen's sheet says. Icons have zContainer's
+/// ryC0 the way Add to Home Screen's sheet says. Icons have ryC0's
 /// frame around them when Frame Shortcut Icons is on.
 @MainActor
 enum AppShortcuts {
@@ -22,8 +22,8 @@ enum AppShortcuts {
         return link
     }
 
-    /// The link the icon opens, which zContainer reads as an AppLink, as an
-    /// app running in zContainer does too: the app's folder, its container,
+    /// The link the icon opens, which ryC0 reads as an AppLink, as an
+    /// app running in ryC0 does too: the app's folder, its container,
     /// and `jit=true` when the icon opens it with JIT.
     static func launchLink(for app: LCAppModel, options: AppShortcutOptions) throws -> URL {
         var items = [URLQueryItem(name: "bundle-name", value: app.appInfo.relativeBundlePath)]
@@ -53,12 +53,12 @@ enum AppShortcuts {
         guard let icon = app.appInfo.generateLiveContainerWrappedIcon(with: style)?.pngData() else {
             throw CocoaError(.propertyListWriteInvalid)
         }
-        let summaryKey = options.opensWithJIT ? "zc.shortcut.profileSummaryJIT %@" : "zc.shortcut.profileSummary %@"
+        let summaryKey = options.opensWithJIT ? "ryc0.shortcut.profileSummaryJIT %@" : "ryc0.shortcut.profileSummary %@"
         let summary = summaryKey.localizeWithFormat(appName)
         // Each way of opening an app gets a profile of its own, so adding an
         // app again the same way replaces its icon, while an icon that opens
         // it another way, such as with JIT, goes beside it.
-        let identifier = [app.appInfo.bundleIdentifier() ?? "app", options.containerFolderName, options.opensWithJIT ? "jit" : nil]
+        let identifier = [Bundle.main.bundleIdentifier, app.appInfo.bundleIdentifier() ?? "app", options.containerFolderName, options.opensWithJIT ? "jit" : nil]
             .compactMap { $0 }
             .joined(separator: ".")
         let webClip: [String: Any] = [
@@ -81,7 +81,7 @@ enum AppShortcuts {
             "PayloadDescription": summary,
             "PayloadDisplayName": name,
             "PayloadIdentifier": identifier,
-            "PayloadOrganization": "zContainer",
+            "PayloadOrganization": "ryC0",
             "PayloadRemovalDisallowed": false,
             "PayloadType": "Configuration",
             "PayloadUUID": UUID().uuidString,

@@ -37,7 +37,7 @@ struct HomeFolderTitle: View {
     @ViewBuilder
     private var title: some View {
         if model.isEditing {
-            TextField("zc.home.folderNameField".loc, text: nameBinding)
+            TextField("ryc0.home.folderNameField".loc, text: nameBinding)
                 .font(.system(size: HomeDesign.folderTitleSize, weight: .bold))
                 .foregroundStyle(.white)
                 .submitLabel(.done)
@@ -49,7 +49,7 @@ struct HomeFolderTitle: View {
                 .homeFolderGlass(cornerRadius: HomeDesign.folderNameFieldCornerRadius)
                 .overlay(alignment: .trailing) {
                     if !name.isEmpty {
-                        Button("zc.home.clearFolderName".loc, systemImage: "xmark.circle.fill", action: clear)
+                        Button("ryc0.home.clearFolderName".loc, systemImage: "xmark.circle.fill", action: clear)
                             .labelStyle(.iconOnly)
                             .font(.title3)
                             .foregroundStyle(.white.opacity(0.6))

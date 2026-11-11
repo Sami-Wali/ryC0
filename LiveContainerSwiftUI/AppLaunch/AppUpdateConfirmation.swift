@@ -5,11 +5,6 @@
 
 import Foundation
 
-/// The question asked before an installed app is replaced by another copy of
-/// it, such as "Update Delta 1.2 to 1.3?". An update from Zeus asks it in
-/// place of the three-way replace question, worded as an update, a downgrade
-/// or a reinstall. Choosing Replace in the three-way question asks it too,
-/// when the new copy is older.
 struct AppUpdateConfirmation: Equatable {
     /// Whether the new copy is newer, older or the same version.
     let kind: AppUpdateConfirmationKind
@@ -27,9 +22,6 @@ struct AppUpdateConfirmation: Equatable {
         self.appName = appName
         kind = Self.kind(of: incomingVersion, build: incomingBuild, against: installedVersion, build: installedBuild)
 
-        // The builds only show when the versions are the same and the builds
-        // aren't, as Zeus names its own updates, so a new build of the same
-        // version doesn't read as the version installed already.
         let sameVersion = AppVersionOrder.compare(version: incomingVersion, build: nil, with: installedVersion, build: nil) == .orderedSame
         if sameVersion, let installedBuild, let incomingBuild,
            AppVersionOrder.compare(version: incomingBuild, build: nil, with: installedBuild, build: nil) != .orderedSame {
@@ -45,11 +37,11 @@ struct AppUpdateConfirmation: Equatable {
     var title: String {
         switch kind {
         case .update:
-            "zc.update.title %@ %@ %@".localizeWithFormat(appName, installedVersion, incomingVersion)
+            "ryc0.update.title %@ %@ %@".localizeWithFormat(appName, installedVersion, incomingVersion)
         case .downgrade:
-            "zc.update.downgradeTitle %@ %@ %@".localizeWithFormat(appName, installedVersion, incomingVersion)
+            "ryc0.update.downgradeTitle %@ %@ %@".localizeWithFormat(appName, installedVersion, incomingVersion)
         case .reinstall:
-            "zc.update.reinstallTitle %@ %@".localizeWithFormat(appName, incomingVersion)
+            "ryc0.update.reinstallTitle %@ %@".localizeWithFormat(appName, incomingVersion)
         }
     }
 
@@ -57,9 +49,9 @@ struct AppUpdateConfirmation: Equatable {
     var message: String {
         switch kind {
         case .update, .reinstall:
-            "zc.update.message %@".localizeWithFormat(appName)
+            "ryc0.update.message %@".localizeWithFormat(appName)
         case .downgrade:
-            "zc.update.downgradeMessage %@ %@".localizeWithFormat(incomingVersion, appName)
+            "ryc0.update.downgradeMessage %@ %@".localizeWithFormat(incomingVersion, appName)
         }
     }
 
@@ -67,11 +59,11 @@ struct AppUpdateConfirmation: Equatable {
     var confirmTitle: String {
         switch kind {
         case .update:
-            "zc.update.confirm".loc
+            "ryc0.update.confirm".loc
         case .downgrade:
-            "zc.update.downgradeConfirm".loc
+            "ryc0.update.downgradeConfirm".loc
         case .reinstall:
-            "zc.update.reinstallConfirm".loc
+            "ryc0.update.reinstallConfirm".loc
         }
     }
 

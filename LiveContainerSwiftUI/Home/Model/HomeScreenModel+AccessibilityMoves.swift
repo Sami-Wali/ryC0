@@ -38,12 +38,12 @@ extension HomeScreenModel {
         return order.indices.contains(neighbor) ? order[neighbor] : nil
     }
 
-    /// Whether an icon on a page can move into the dock, which has room.
+    /// Whether an icon on a page can move into the dock.
     func canMoveToDock(_ item: HomeItem) -> Bool {
         guard let slot = layout.slot(of: item) else {
             return false
         }
-        return slot.page != nil && layout.dock.count < HomeLayout.dockCapacity
+        return slot.page != nil
     }
 
     /// Whether an icon is in the dock, so it can move out onto a page.
@@ -120,6 +120,9 @@ extension HomeScreenModel {
             layout = moved
         }
         HomeLayoutStorage.save(moved)
+        if case .dock(let index)? = moved.slot(of: item) {
+            showDockPage(HomeLayout.dockPage(for: index))
+        }
         if let newPage = moved.slot(of: item)?.page, newPage != (page ?? 0) {
             showPage(newPage)
         } else {

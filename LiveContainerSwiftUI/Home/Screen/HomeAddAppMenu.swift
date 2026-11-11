@@ -27,11 +27,11 @@ struct HomeAddAppMenu: View {
                     .disabled(coordinator.isInstalling)
             }
             Section {
-                Button("zc.home.chooseWallpaper".loc, systemImage: "camera.macro", action: chooseWallpaper)
+                Button("ryc0.home.chooseWallpaper".loc, systemImage: "camera.macro", action: chooseWallpaper)
             }
         } label: {
             if SharedModel.isPhone {
-                Label("zc.home.addApp".loc, systemImage: "plus")
+                Label("ryc0.home.addApp".loc, systemImage: "plus")
                     .labelStyle(.iconOnly)
                     .font(.system(size: HomeDesign.editCapsuleGlyphSize, weight: .bold))
                     .foregroundStyle(.white)
@@ -43,7 +43,7 @@ struct HomeAddAppMenu: View {
                     .frame(minHeight: HomeDesign.minimumTouchSize)
                     .contentShape(.rect)
             } else {
-                Label("zc.home.addApp".loc, systemImage: "plus")
+                Label("ryc0.home.addApp".loc, systemImage: "plus")
                     .labelStyle(.iconOnly)
                     .font(.headline)
                     .foregroundStyle(.white)

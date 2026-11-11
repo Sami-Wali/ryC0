@@ -5,9 +5,6 @@
 
 import SwiftUI
 
-/// A small icon in the style of Zeus's onboarding: a squircle outline in
-/// zContainer's pink, with a faint fill of it and a symbol inside. Once its
-/// step is done it fills in solid, and the symbol gives way to a white check.
 struct OnboardingIcon: View {
     /// The SF Symbol inside, until the step is done.
     let systemImage: String

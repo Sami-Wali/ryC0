@@ -3,17 +3,73 @@
 //  LiveContainerSwiftUI
 //
 
+import Combine
 import UIKit
 
-/// Finds zContainer's main window, the one showing the Home Screen, for the
+/// Finds ryC0's main window, the one showing the Home Screen, for the
 /// code that adds views to it or presents over it: multitasking's virtual
 /// windows and their dock, and app windows launched from Objective-C. On iPad
 /// several scenes can be connected at once, such as an app's own window or a
-/// second zContainer window about to close, so the first connected scene could
+/// second ryC0 window about to close, so the first connected scene could
 /// be any of them. HomeRouter records the scene it accepts as the main window.
 @objc final class MainWindow: NSObject {
     /// The scene HomeRouter accepted as the main window, until it disconnects.
     static weak var scene: UIWindowScene?
+    static let homeRequests = PassthroughSubject<Bool, Never>()
+    static let guestErrors = PassthroughSubject<String, Never>()
+    static private(set) var switcherPreviews: [String: UIImage] = [:]
+    private static let previewCache = DispatchQueue(label: "ryc0.switcher.previews", qos: .utility)
+
+    static func saveSwitcherPreview(_ image: UIImage?, for bundle: String) {
+        previewCache.async { LCSharedUtils.setSwitcherPreview(image, forBundlePath: bundle) }
+    }
+
+    static func loadSwitcherPreview(for bundle: String) async -> UIImage? {
+        await withCheckedContinuation { continuation in
+            previewCache.async {
+                let image = LCSharedUtils.switcherPreview(forBundlePath: bundle)
+                continuation.resume(returning: image?.preparingForDisplay() ?? image)
+            }
+        }
+    }
+
+    static func removeSwitcherPreview(for container: String) {
+        switcherPreviews.removeValue(forKey: container)
+    }
+
+    @objc static func showHome(openingSwitcher: Bool) {
+        captureSwitcherPreviews()
+        MultitaskDockManager.shared.minimizeAllWindows()
+        homeRequests.send(openingSwitcher)
+    }
+
+    @MainActor @objc static func returnFromGuestClockTap() -> Bool {
+        if #available(iOS 16.0, *) {
+            return FullScreenGuestSession.shared.returnFromClockTap()
+        }
+        return false
+    }
+
+    private static func captureSwitcherPreviews() {
+        let windows = MultitaskManager.shared.windows
+        switcherPreviews = switcherPreviews.filter { windows[$0.key]?.controller != nil }
+        for (folder, window) in windows {
+            guard let controller = window.controller,
+                  let view = controller.viewIfLoaded, view.window != nil, !view.isHidden,
+                  controller.parent?.viewIfLoaded?.isHidden != true,
+                  !view.bounds.isEmpty,
+                  DataManager.shared.model.apps.contains(where: {
+                      $0.appInfo.relativeBundlePath == controller.bundleId && !$0.appInfo.isHidden && !$0.appInfo.isLocked
+                  }) else { continue }
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = min(1, 520 / max(view.bounds.width, view.bounds.height))
+            var drawn = false
+            let image = UIGraphicsImageRenderer(bounds: view.bounds, format: format).image { _ in
+                drawn = view.drawHierarchy(in: view.bounds, afterScreenUpdates: false)
+            }
+            if drawn { switcherPreviews[folder] = image }
+        }
+    }
 
     /// The main window. Before HomeRouter has accepted one, it's the window of
     /// the scene in the foreground, or of any scene, which on iPhone is always

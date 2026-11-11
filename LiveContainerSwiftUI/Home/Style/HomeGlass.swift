@@ -14,10 +14,12 @@ struct HomeGlass: ViewModifier {
     let shape: HomeGlassShape
     /// Whether the glass reacts to touches, as a button's does.
     var isInteractive = false
+    var isClear = false
 
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *), SharedModel.isLiquidGlassEnabled {
-            content.glassEffect(isInteractive ? .regular.interactive() : .regular, in: shape.liquidGlassShape)
+            let glass = isClear ? Glass.clear : Glass.regular
+            content.glassEffect(glass.interactive(isInteractive), in: shape.liquidGlassShape)
         } else {
             content.background {
                 shape.fallbackShape
@@ -35,7 +37,7 @@ struct HomeGlass: ViewModifier {
 
 extension View {
     /// Puts the Home Screen's glass behind this view, in the given shape.
-    func homeGlass(_ shape: HomeGlassShape, isInteractive: Bool = false) -> some View {
-        modifier(HomeGlass(shape: shape, isInteractive: isInteractive))
+    func homeGlass(_ shape: HomeGlassShape, isInteractive: Bool = false, isClear: Bool = false) -> some View {
+        modifier(HomeGlass(shape: shape, isInteractive: isInteractive, isClear: isClear))
     }
 }

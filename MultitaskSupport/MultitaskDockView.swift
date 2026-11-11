@@ -326,7 +326,7 @@ class AppInfoProvider {
     ///
     /// It goes on the root view itself, sized to it and above the Home
     /// Screen, and comes back to the front when something covered it.
-    /// zContainer's root is its own SwiftUI view rather than a tab bar
+    /// ryC0's root is its own SwiftUI view rather than a tab bar
     /// controller whose view came first, so the first view there could be one
     /// that scrolls with the Home Screen's pages, and anything the Home Screen
     /// adds later, like its dock, would be drawn over the windows. The host
@@ -504,8 +504,6 @@ class AppInfoProvider {
     }
     
     @objc public func removeRunningApp(_ appUUID: String) {
-        guard isDockEnabled() else { return }
-        
         DispatchQueue.main.async {
             withAnimation(Constants.appsAnimation) {
                 self.apps.removeAll { $0.appUUID == appUUID }
@@ -705,16 +703,11 @@ class AppInfoProvider {
     }
 
     @objc public func addRunningAppWithInfo(_ appInfo: LCAppInfo?, appUUID: String, view: UIView?) {
-        guard isDockEnabled() else { return }
-        
-        if apps.contains(where: { $0.appUUID == appUUID }) {
-            return
-        }
-        
         let appName = appInfo?.displayName() ?? "Unknown App"
         let appModel = DockAppModel(appName: appName, appUUID: appUUID, appInfo: appInfo, view: view)
         
         DispatchQueue.main.async {
+            guard !self.apps.contains(where: { $0.appUUID == appUUID }) else { return }
             withAnimation(Constants.appsAnimation) {
                 self.apps.append(appModel)
             }

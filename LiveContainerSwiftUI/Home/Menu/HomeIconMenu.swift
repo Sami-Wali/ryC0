@@ -28,12 +28,12 @@ struct HomeIconMenu: View {
                     HomeAppMenu(app: app, showsEditHomeScreen: true)
                 }
             case .folder(let id):
-                Button("zc.home.renameFolder".loc, systemImage: "pencil") {
+                Button("ryc0.home.renameFolder".loc, systemImage: "pencil") {
                     model.renameFolderFromMenu(id)
                 }
-                Button("zc.home.editHomeScreen".loc, systemImage: .homeScreenSymbol, action: model.beginEditingAfterMenu)
+                Button("ryc0.home.editHomeScreen".loc, systemImage: .homeScreenSymbol, action: model.beginEditingAfterMenu)
             case .settings:
-                Button("zc.home.editHomeScreen".loc, systemImage: .homeScreenSymbol, action: model.beginEditingAfterMenu)
+                Button("ryc0.home.editHomeScreen".loc, systemImage: .homeScreenSymbol, action: model.beginEditingAfterMenu)
             }
         }
     }

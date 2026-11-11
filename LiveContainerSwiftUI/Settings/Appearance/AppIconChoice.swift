@@ -5,16 +5,8 @@
 
 import Foundation
 
-/// zContainer's own icon on the iPhone's Home Screen, chosen in Settings > Home
-/// Screen. zContainer starts with its own, the grid of apps on Zeus pink. OG is
-/// the icon it had before, and the rest are the grid on the colors Zeus offers.
-///
-/// Every one but zContainer's own is an alternate icon iOS switches to by name,
-/// which the build lists under CFBundleAlternateIcons from the files
-/// Scripts/zc/art/render-icon.sh renders, under the same names.
 enum AppIconChoice: CaseIterable, Identifiable {
-    case zContainer
-    case og
+    case ryC0
     case purple
     case blue
     case teal
@@ -32,25 +24,23 @@ enum AppIconChoice: CaseIterable, Identifiable {
     /// The icon's name in Settings.
     var title: String {
         switch self {
-        case .zContainer: "zc.appIcon.zContainer".loc
-        case .og: "zc.appIcon.og".loc
-        case .purple: "zc.appIcon.purple".loc
-        case .blue: "zc.appIcon.blue".loc
-        case .teal: "zc.appIcon.teal".loc
-        case .green: "zc.appIcon.green".loc
-        case .orange: "zc.appIcon.orange".loc
-        case .red: "zc.appIcon.red".loc
-        case .gold: "zc.appIcon.gold".loc
-        case .mono: "zc.appIcon.mono".loc
-        case .light: "zc.appIcon.light".loc
+        case .ryC0: "ryc0.appIcon.ryC0".loc
+        case .purple: "ryc0.appIcon.purple".loc
+        case .blue: "ryc0.appIcon.blue".loc
+        case .teal: "ryc0.appIcon.teal".loc
+        case .green: "ryc0.appIcon.green".loc
+        case .orange: "ryc0.appIcon.orange".loc
+        case .red: "ryc0.appIcon.red".loc
+        case .gold: "ryc0.appIcon.gold".loc
+        case .mono: "ryc0.appIcon.mono".loc
+        case .light: "ryc0.appIcon.light".loc
         }
     }
 
-    /// The name iOS knows the icon by, or nil for zContainer's own.
+    /// The name iOS knows the icon by, or nil for ryC0's own.
     var alternateIconName: String? {
         switch self {
-        case .zContainer: nil
-        case .og: "OG"
+        case .ryC0: nil
         case .purple: "Purple"
         case .blue: "Blue"
         case .teal: "Teal"
@@ -70,8 +60,8 @@ enum AppIconChoice: CaseIterable, Identifiable {
     }
 
     /// The choice in use, from the name iOS gives the icon it shows, nil when
-    /// it's zContainer's own.
+    /// it's ryC0's own.
     init(alternateIconName name: String?) {
-        self = Self.allCases.first { $0.alternateIconName == name } ?? .zContainer
+        self = Self.allCases.first { $0.alternateIconName == name } ?? .ryC0
     }
 }

@@ -54,8 +54,8 @@ static const CGFloat LCHomeButtonPressedScale = 0.9;
         [self addRings];
 
         self.isAccessibilityElement = YES;
-        self.accessibilityLabel = @"zc.home.homeButton".loc;
-        self.accessibilityHint = @"zc.guestTweak.homeButtonHint".loc;
+        self.accessibilityLabel = @"ryc0.home.homeButton".loc;
+        self.accessibilityHint = @"ryc0.guestTweak.homeButtonHint".loc;
         self.accessibilityTraits = UIAccessibilityTraitButton;
     }
     return self;

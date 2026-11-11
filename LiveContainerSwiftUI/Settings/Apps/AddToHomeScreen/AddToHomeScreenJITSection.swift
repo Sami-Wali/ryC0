@@ -15,7 +15,7 @@ struct AddToHomeScreenJITSection: View {
     var body: some View {
         let alwaysOpensWithJIT = app.uiIsJITNeeded || app.uiIs32bit
         Section {
-            Toggle("zc.home.openWithJIT".loc, isOn: alwaysOpensWithJIT ? .constant(true) : $opensWithJIT)
+            Toggle("ryc0.home.openWithJIT".loc, isOn: alwaysOpensWithJIT ? .constant(true) : $opensWithJIT)
                 .disabled(alwaysOpensWithJIT)
         } footer: {
             Text(footerKey.loc)
@@ -25,11 +25,11 @@ struct AddToHomeScreenJITSection: View {
     /// Why the icon opens the app with JIT, or what the switch does.
     private var footerKey: String {
         if app.uiIs32bit {
-            "zc.shortcut.jitFooter32bit"
+            "ryc0.shortcut.jitFooter32bit"
         } else if app.uiIsJITNeeded {
-            "zc.shortcut.jitFooterAlways"
+            "ryc0.shortcut.jitFooterAlways"
         } else {
-            "zc.shortcut.jitFooter"
+            "ryc0.shortcut.jitFooter"
         }
     }
 }

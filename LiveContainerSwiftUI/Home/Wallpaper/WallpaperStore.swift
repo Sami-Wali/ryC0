@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// What the Home Screen shows behind its icons: the halo zContainer comes
+/// What the Home Screen shows behind its icons: the halo ryC0 comes
 /// with, or a photo chosen in Settings > Wallpaper or from edit mode's add
 /// button. It keeps a blurred copy for behind search, and whether Dark Mode
 /// dims a photo. A photo is kept as a file the size of the largest screens;
@@ -22,11 +22,12 @@ final class WallpaperStore {
     private(set) var blurredImage: UIImage?
 
     /// Whether the wallpaper is a photo the person chose, rather than the
-    /// halo zContainer comes with.
+    /// halo ryC0 comes with.
     private(set) var isCustom = false
 
     /// Whether a new wallpaper is being made from a photo.
     private(set) var isPreparing = false
+    private(set) var motion: URL?
 
     /// Whether a photo is dimmed a little while Dark Mode is on, so the white
     /// names under the icons read over its bright parts, as on iOS. The halo
@@ -38,7 +39,7 @@ final class WallpaperStore {
     }
 
     /// The defaults key `dimsInDarkMode` is saved under.
-    private static let dimmedKey = "ZCWallpaperDimmed"
+    private static let dimmedKey = "RYC0WallpaperDimmed"
 
     /// Counts the wallpapers set, and the times the halo is chosen again,
     /// so one that finishes loading or being made late can't replace a
@@ -74,17 +75,43 @@ final class WallpaperStore {
             return
         }
         try WallpaperFile.save(jpeg)
+        TendiesWallpaper.select(nil)
+        motion = nil
         self.image = image
         blurredImage = blurred
         isCustom = true
     }
 
-    /// Goes back to the halo zContainer comes with. The photo stays, dimmed as
+    func importTendies(_ url: URL) async throws {
+        generation += 1
+        let setting = generation
+        isPreparing = true
+        defer { if setting == generation { isPreparing = false } }
+        let asset = try await TendiesWallpaper.prepare(url)
+        let poster = await Task.detached(priority: .userInitiated) {
+            asset.poster.map { ($0, WallpaperFile.blurred($0)) }
+        }.value
+        guard setting == generation, let poster else {
+            TendiesWallpaper.discard(asset)
+            if setting == generation { throw WallpaperError.unreadableTendies }
+            return
+        }
+        TendiesWallpaper.select(asset)
+        WallpaperFile.remove()
+        image = poster.0
+        blurredImage = poster.1
+        motion = asset.motion
+        isCustom = true
+    }
+
+    /// Goes back to the halo ryC0 comes with. The photo stays, dimmed as
     /// it was, until the halo has loaded and takes its place.
     func useDefault() {
         generation += 1
         isPreparing = false
+        TendiesWallpaper.select(nil)
         WallpaperFile.remove()
+        motion = nil
         load()
     }
 
@@ -97,9 +124,11 @@ final class WallpaperStore {
         let isPad = UIDevice.current.userInterfaceIdiom == .pad
         Task {
             let loaded = await Task.detached(priority: .userInitiated) {
-                let photo = WallpaperFile.load()
+                let animation = TendiesWallpaper.load()
+                let poster = animation?.poster
+                let photo = poster ?? WallpaperFile.load()
                 return (photo ?? WallpaperFile.loadDefault(isPad: isPad)).map { image in
-                    (image, photo != nil)
+                    (image, photo != nil, poster == nil ? nil : animation?.motion)
                 }
             }.value
             // A wallpaper set meanwhile is newer than this one.
@@ -109,6 +138,7 @@ final class WallpaperStore {
             image = loaded.0
             blurredImage = nil
             isCustom = loaded.1
+            motion = loaded.2
 
             let blurred = await Task.detached(priority: .userInitiated) {
                 WallpaperFile.blurred(loaded.0)

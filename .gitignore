@@ -7,5 +7,5 @@ packages/
 xcuserdata
 Resources/Frameworks/OpenSSL.framework
 
-# Linux build (Scripts/zc)
+# Linux build (Scripts/ryc0)
 /build/

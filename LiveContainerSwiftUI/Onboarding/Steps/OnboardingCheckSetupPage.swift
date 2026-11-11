@@ -5,15 +5,8 @@
 
 import SwiftUI
 
-/// The step that makes sure zContainer can sign apps, in place of the
-/// patching other sideloaders ask for: as it shows, it signs a test library
-/// with the certificate, the way apps are signed, and checks that iOS loads
-/// it, beside the optional parts Zeus sets up. Continue is pinned at the
-/// bottom once signing works. When it doesn't, the step says why, Open Zeus
-/// gets zContainer signed again, Check Again checks once more, and the
-/// diagnosis shows the details.
 struct OnboardingCheckSetupPage: View {
-    @Environment(ZeusConnection.self) private var connection
+    @Environment(SigningStatus.self) private var connection
     @Environment(OnboardingFlow.self) private var flow
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -21,14 +14,14 @@ struct OnboardingCheckSetupPage: View {
 
     var body: some View {
         OnboardingSetupForm {
-            OnboardingHeader(systemImage: "checkmark.shield.fill", title: "zc.settings.setup.check".loc, message: message)
+            OnboardingHeader(systemImage: "checkmark.shield.fill", title: "ryc0.settings.setup.check".loc, message: message)
         } content: {
             Section {
-                ForEach(ZeusSetupCheck.allCases, id: \.self) { check in
+                ForEach(SigningSetupCheck.allCases, id: \.self) { check in
                     OnboardingSetupCheckRow(check: check, result: connection.result(for: check))
                 }
             } footer: {
-                Text("zc.onboarding.check.footer".loc)
+                Text("ryc0.onboarding.check.footer".loc)
             }
 
             if hasFailed {
@@ -40,13 +33,14 @@ struct OnboardingCheckSetupPage: View {
         .onboardingBottomBar {
             OnboardingFooter {
                 if hasFailed {
-                    OnboardingOpenZeusButton(isPrimary: true)
-                    OnboardingSecondaryButton(title: "zc.onboarding.check.retry".loc, action: checkAgain)
-                    OnboardingSecondaryButton(title: "zc.onboarding.setUpLater".loc, action: skip)
+                    SigningImportCertificateButton(title: "ryc0.onboarding.connect.import".loc)
+                        .buttonStyle(OnboardingPlainButtonStyle())
+                    OnboardingSecondaryButton(title: "ryc0.onboarding.check.retry".loc, action: checkAgain)
+                    OnboardingSecondaryButton(title: "ryc0.onboarding.setUpLater".loc, action: skip)
                 } else {
                     OnboardingProgressButton(
                         title: "lc.common.continue".loc,
-                        progressTitle: "zc.settings.setup.checking".loc,
+                        progressTitle: "ryc0.settings.setup.checking".loc,
                         isInProgress: !hasPassed,
                         action: continueTapped
                     )
@@ -63,16 +57,13 @@ struct OnboardingCheckSetupPage: View {
         .sheet(isPresented: $isShowingDiagnosis) {
             OnboardingDiagnosisSheet()
         }
-        // A certificate stored while the step shows, like the one Zeus
-        // sends, starts over with nothing known about it, so it's checked
-        // as it arrives.
         .task(id: connection.certificateVersion) {
             await checkIfNeeded()
         }
     }
 
     /// How signing stands, which decides the step.
-    private var signing: ZeusCheckResult {
+    private var signing: SigningCheckResult {
         connection.result(for: .signing)
     }
 
@@ -86,11 +77,11 @@ struct OnboardingCheckSetupPage: View {
 
     private var message: String {
         if hasPassed {
-            "zc.onboarding.check.passed".loc
+            "ryc0.onboarding.check.passed".loc
         } else if hasFailed {
-            "zc.onboarding.check.failed".loc
+            "ryc0.onboarding.check.failed".loc
         } else {
-            "zc.onboarding.check.checking".loc
+            "ryc0.onboarding.check.checking".loc
         }
     }
 

@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// zContainer's Settings icon, drawn in the style of the iOS Settings icon: a
+/// ryC0's Settings icon, drawn in the style of the iOS Settings icon: a
 /// silver tile with a dark, finely toothed gear, a light ring inside it, and a
 /// wheel of three spokes around the hub. Its dark version, shown with apps'
 /// dark icons, turns the silver to near black and the gear to light gray, as

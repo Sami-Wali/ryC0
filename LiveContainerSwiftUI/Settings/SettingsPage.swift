@@ -9,11 +9,7 @@ import Foundation
 /// Settings' sidebar, and the page picked there shows beside it, as in the
 /// iPad's Settings app.
 enum SettingsPage: Hashable {
-    /// Settings > Zeus, behind the card at the top.
-    case zeus
-    /// Settings > Zeus again, opened from the row under the card that says
-    /// what is wrong. It is a page of its own so that, in the iPad's sidebar,
-    /// only the row that was tapped is highlighted, as in the Settings app.
+    case signing
     case attention
     /// Settings > General.
     case general
@@ -26,10 +22,7 @@ enum SettingsPage: Hashable {
     /// Settings > Advanced.
     case advanced
 
-    /// The page that shows for this one: the attention row's is Zeus's.
-    /// The iPad's detail column is rebuilt only when this changes, so moving
-    /// the selection from the attention row to the card keeps the page.
     var shownPage: SettingsPage {
-        self == .attention ? .zeus : self
+        self == .attention ? .signing : self
     }
 }

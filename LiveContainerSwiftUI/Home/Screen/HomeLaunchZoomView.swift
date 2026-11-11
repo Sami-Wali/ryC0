@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// A tapped app opening: its icon grows from its place into a black screen,
-/// the way iOS zooms an app open, just before zContainer turns into the app.
+/// the way iOS zooms an app open, just before ryC0 turns into the app.
 /// With Reduce Motion on, the screen fades to black instead. It tells the
 /// model once the screen is covered, which lets the launch go ahead. The
 /// growing icon doesn't lift under a trackpad or mouse pointer the way the
@@ -47,7 +47,7 @@ struct HomeLaunchZoomView: View {
     }
 
     private func open() {
-        withAnimation(HomeDesign.launchZoom) {
+        withAnimation(reduceMotion ? .easeOut(duration: 0.16) : HomeDesign.launchZoom) {
             isOpen = true
         } completion: {
             model.launchZoomDidFinish()

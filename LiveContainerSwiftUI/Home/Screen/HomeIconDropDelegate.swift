@@ -11,8 +11,8 @@ import UniformTypeIdentifiers
 /// finger on from there, so the Home Screen takes that drag as a drop target
 /// and feeds the finger to edit mode's drag.
 struct HomeIconDropDelegate: DropDelegate {
-    /// The type of the data an icon drag carries. It never leaves zContainer.
-    static let iconType = UTType(exportedAs: "app.zcontainer.home-icon")
+    /// The type of the data an icon drag carries. It never leaves ryC0.
+    static let iconType = UTType(exportedAs: "com.ry0.ryC0.home-icon")
 
     let model: HomeScreenModel
 

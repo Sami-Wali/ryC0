@@ -13,8 +13,8 @@ struct SettingsPageView: View {
 
     var body: some View {
         switch page {
-        case .zeus, .attention:
-            ZeusSettingsView()
+        case .signing, .attention:
+            SigningSettingsView()
         case .general:
             GeneralSettingsView()
         case .appearance:

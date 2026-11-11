@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// One icon on the Home Screen: an app inside zContainer, zContainer's own
+/// One icon on the Home Screen: an app inside ryC0, ryC0's own
 /// Settings, or a folder of them. The layout saves each item as its `id`.
 enum HomeItem: Hashable, Identifiable, Sendable {
     /// An installed app, by its key: its bundle ID and the folder it is
@@ -14,7 +14,7 @@ enum HomeItem: Hashable, Identifiable, Sendable {
     /// shared storage, so the icon keeps its place.
     case app(String)
 
-    /// zContainer's Settings. It can be moved but not removed.
+    /// ryC0's Settings. It can be moved but not removed.
     case settings
 
     /// A folder, by the id of its entry in the layout's `folders`.
@@ -57,6 +57,17 @@ enum HomeItem: Hashable, Identifiable, Sendable {
 }
 
 extension HomeItem: Codable {
+    static func decodeIdentifiers(_ ids: [String]) throws -> [HomeItem] {
+        try ids.compactMap { id in
+            // The old built-in store icon is now a regular installed app.
+            guard id != "store" else { return nil }
+            guard let item = HomeItem(id: id) else {
+                throw DecodingError.dataCorrupted(.init(codingPath: [], debugDescription: "Invalid Home Screen item: \(id)"))
+            }
+            return item
+        }
+    }
+
     /// Reads an item saved as its `id`.
     init(from decoder: any Decoder) throws {
         let container = try decoder.singleValueContainer()

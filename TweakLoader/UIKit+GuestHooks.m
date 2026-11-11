@@ -1,5 +1,6 @@
 @import UIKit;
 #import "LCSharedUtils.h"
+#import "HomeButton/LCHomeButtonController.h"
 #import "UIKitPrivate.h"
 #import "../LiveContainer/utils.h"
 #import <LocalAuthentication/LocalAuthentication.h>
@@ -10,7 +11,7 @@ UIInterfaceOrientation LCOrientationLock = UIInterfaceOrientationUnknown;
 NSMutableArray<NSString*>* LCSupportedUrlSchemes = nil;
 BOOL launchURLProcessed = NO;
 
-/// Tells zContainer a touch began on this app, in its multitasking window,
+/// Tells ryC0 a touch began on this app, in its multitasking window,
 /// so the window comes to the front. The notification is named for the app's
 /// container: the last part of the home folder it was given.
 static void LCPostWindowTouched(void) {
@@ -34,10 +35,7 @@ static void UIKitGuestHooksInit() {
     swizzle(UIApplication.class, @selector(setDelegate:), @selector(hook_setDelegate:));
     swizzle(UIScene.class, @selector(scene:didReceiveActions:fromTransitionContext:), @selector(hook_scene:didReceiveActions:fromTransitionContext:));
     swizzle(UIScene.class, @selector(openURL:options:completionHandler:), @selector(hook_openURL:options:completionHandler:));
-    // Only an app in a multitasking window has one to bring forward.
-    if (NSUserDefaults.isLiveProcess) {
-        swizzle(UIApplication.class, @selector(sendEvent:), @selector(hook_sendEvent:));
-    }
+    swizzle(UIApplication.class, @selector(sendEvent:), @selector(hook_sendEvent:));
     NSInteger LCOrientationLockDirection = [NSUserDefaults.guestAppInfo[@"LCOrientationLock"] integerValue];
     if(LCOrientationLockDirection != 0 && [UIDevice.currentDevice userInterfaceIdiom] == UIUserInterfaceIdiomPhone) {
         switch (LCOrientationLockDirection) {
@@ -126,7 +124,7 @@ void LCShowSwitchAppConfirmation(NSURL *url, NSString* bundleId, bool isSharedAp
 
     NSString *message = [@"lc.guestTweak.appSwitchTip %@" localizeWithFormat:bundleId];
     UIWindow *window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"zContainer" message:message preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"ryC0" message:message preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction* okAction = [UIAlertAction actionWithTitle:@"lc.common.ok".loc style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
         [NSClassFromString(@"LCSharedUtils") launchToGuestAppWithURL:url];
         window.windowScene = nil;
@@ -158,7 +156,7 @@ void LCShowSwitchAppConfirmation(NSURL *url, NSString* bundleId, bool isSharedAp
 
 void LCShowAlert(NSString* message) {
     UIWindow *window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"zContainer" message:message preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"ryC0" message:message preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction* okAction = [UIAlertAction actionWithTitle:@"lc.common.ok".loc style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
         window.windowScene = nil;
     }];
@@ -226,7 +224,7 @@ void LCOpenWebPage(NSString* webPageUrlString, NSString* originalUrl) {
     
     NSString *message = @"lc.guestTweak.openWebPageTip".loc;
     UIWindow *window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"zContainer" message:message preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"ryC0" message:message preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction* okAction = [UIAlertAction actionWithTitle:@"lc.common.ok".loc style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
         [NSClassFromString(@"LCSharedUtils") setWebPageUrlForNextLaunch:webPageUrlString];
         [NSClassFromString(@"LCSharedUtils") launchToGuestAppWithClassicMode:0];
@@ -356,12 +354,6 @@ BOOL canAppOpenItself(NSURL* url) {
     return [LCSupportedUrlSchemes containsObject:[url.scheme lowercaseString]];
 }
 
-// Whether a URL uses one of the schemes zContainer's own Info.plist declares:
-// its own and the one Zeus adds when it signs zContainer ("zeus-" and the
-// bundle ID), which is how Zeus opens it and sends it requests. Any app can
-// declare those schemes too, so Zeus's links carry nothing secret: they only
-// name what Zeus left in the app group. Links on those are for zContainer and
-// never reach the guest app.
 static BOOL LCIsHostOwnURL(NSURL *url) {
     static NSSet<NSString *> *hostSchemes = nil;
     static dispatch_once_t onceToken;
@@ -389,6 +381,25 @@ static BOOL LCIsHostOwnURL(NSURL *url) {
         hostSchemes = schemes;
     });
     return url.scheme.length > 0 && [hostSchemes containsObject:url.scheme.lowercaseString];
+}
+
+static BOOL LCIsHostInstallLink(NSURL *url) {
+    return [url.host.lowercaseString isEqualToString:@"install"] && LCIsHostOwnURL(url);
+}
+
+static BOOL LCOfferInstallInHost(NSURL *url, void (^completion)(BOOL)) {
+    if (NSUserDefaults.isLiveProcess) {
+        return NO;
+    }
+    NSURL *source = [NSClassFromString(@"LCSharedUtils") installSourceURLFromLink:url];
+    if (!source || source.isFileURL) {
+        return NO;
+    }
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (completion) completion(YES);
+        LCShowSwitchAppConfirmation(url, @"ryC0", false);
+    });
+    return YES;
 }
 
 typedef NS_ENUM(NSInteger, LCControlAppURLHandling) {
@@ -473,7 +484,7 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
         
         // launch to LiveContainerUI
         if([bundleName isEqualToString:@"ui"]) {
-            LCShowSwitchAppConfirmation(url, @"zContainer", false);
+            LCShowSwitchAppConfirmation(url, @"ryC0", false);
             return LCControlAppURLHandlingStop;
         }
         
@@ -521,43 +532,39 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
         return LCControlAppURLHandlingReplaceURL;
     }
 
-    if([urlHost isEqualToString:@"install"]) {
-        LCShowAlert(@"lc.guestTweak.restartToInstall".loc);
+    if ([urlHost.lowercaseString isEqualToString:@"install"]) {
+        if (!LCOfferInstallInHost(url, nil) && [NSClassFromString(@"LCSharedUtils") installSourceURLFromLink:url]) {
+            LCShowAlert(@"lc.guestTweak.restartToInstall".loc);
+        }
         return LCControlAppURLHandlingStop;
     }
 
-    // A certificate link holds a private key, so only zContainer's own
+    // A certificate link holds a private key, so only ryC0's own
     // screens take it, after asking.
     if([urlHost isEqualToString:@"certificate"]) {
-        LCShowAlert(@"zc.guestTweak.restartToImportCertificate".loc);
+        LCShowAlert(@"ryc0.guestTweak.restartToImportCertificate".loc);
         return LCControlAppURLHandlingStop;
     }
 
-    // What Zeus sent waits in the app group, and zContainer's Home Screen
-    // takes it once it is back, so the link itself has nothing left to do.
-    if([urlHost.lowercaseString isEqualToString:@"zeus-request"]) {
-        LCShowAlert(@"zc.guestTweak.restartToGetFromZeus".loc);
-        return LCControlAppURLHandlingStop;
-    }
 
     return LCControlAppURLHandlingStop;
 }
 
 // Handler for AppDelegate
 @implementation UIApplication(LiveContainerHook)
-/// A touch beginning on the app brings its multitasking window to the front,
-/// as a touch on the window's title bar does.
 - (void)hook_sendEvent:(UIEvent *)event {
-    [self hook_sendEvent:event];
-    if (event.type != UIEventTypeTouches) {
-        return;
-    }
-    for (UITouch *touch in event.allTouches) {
-        if (touch.phase == UITouchPhaseBegan) {
-            LCPostWindowTouched();
-            return;
+    if (event.type == UIEventTypeTouches) {
+        [LCHomeButtonController.sharedController trackHomeSwipe:event];
+        if (NSUserDefaults.isLiveProcess) {
+            for (UITouch *touch in event.allTouches) {
+                if (touch.phase == UITouchPhaseBegan) {
+                    LCPostWindowTouched();
+                    break;
+                }
+            }
         }
     }
+    [self hook_sendEvent:event];
 }
 
 - (void)hook__applicationOpenURLAction:(id)action payload:(NSDictionary *)payload origin:(id)origin {
@@ -591,9 +598,15 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
                 // Convert the base64 encoded url into String
                 NSData *decodedData = [[NSData alloc] initWithBase64EncodedString:realUrlEncoded options:0];
                 decodedUrlStr = [[NSString alloc] initWithData:decodedData encoding:NSUTF8StringEncoding];
-            } else if([urlStr hasPrefix:NSUserDefaults.lcAppUrlScheme] || LCIsHostOwnURL([NSURL URLWithString:urlStr])) {
-                context.payload = nil;
-                context.actions = nil;
+            } else {
+                NSURL *url = [NSURL URLWithString:urlStr];
+                if (LCIsHostInstallLink(url)) {
+                    LCOfferInstallInHost(url, nil);
+                }
+                if ([urlStr hasPrefix:NSUserDefaults.lcAppUrlScheme] || LCIsHostOwnURL(url)) {
+                    context.payload = nil;
+                    context.actions = nil;
+                }
             }
         } while (0);
     }
@@ -653,6 +666,13 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
 }
 
 - (void)hook_openURL:(NSURL *)url options:(NSDictionary<NSString *,id> *)options completionHandler:(void (^)(_Bool))completion {
+    if (LCIsHostInstallLink(url)) {
+        if (![options[UIApplicationOpenURLOptionUniversalLinksOnly] boolValue] && LCOfferInstallInHost(url, completion)) {
+            return;
+        }
+        [self hook_openURL:url options:options completionHandler:completion];
+        return;
+    }
     BOOL openSelf = canAppOpenItself(url);
     BOOL redirectToHost = shouldRedirectOpenURLToHost(url);;
     if(openSelf || redirectToHost) {
@@ -734,6 +754,13 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
 }
 
 - (void)hook_openURL:(NSURL *)url options:(UISceneOpenExternalURLOptions *)options completionHandler:(void (^)(BOOL success))completion {
+    if (LCIsHostInstallLink(url)) {
+        if (!options.universalLinksOnly && LCOfferInstallInHost(url, completion)) {
+            return;
+        }
+        [self hook_openURL:url options:options completionHandler:completion];
+        return;
+    }
     BOOL openSelf = canAppOpenItself(url);
     BOOL redirectToHost = shouldRedirectOpenURLToHost(url);
     if(openSelf || redirectToHost) {

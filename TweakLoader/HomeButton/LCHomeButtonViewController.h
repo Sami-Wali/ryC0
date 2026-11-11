@@ -1,4 +1,5 @@
 @import UIKit;
+#import "LCSharedUtils.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
@@ -8,15 +9,17 @@ NS_ASSUME_NONNULL_BEGIN
 // rotation, the status bar, the Home indicator and the screen edge gestures to
 // the app underneath.
 @interface LCHomeButtonViewController : UIViewController
+@property (nonatomic) LCGuestHomeControl homeControl;
 
 // Called when the button is pressed.
 @property (nonatomic, copy, nullable) void (^pressHandler)(void);
+@property (nonatomic, copy, nullable) void (^switcherHandler)(void);
 
-// Covers the app in black, as it closes to go back to zContainer, and calls
-// `completion` once the screen is black.
-- (void)fadeOutWithCompletion:(void (^)(void))completion;
+// Captures the guest before it receives the background callbacks.
+- (nullable UIImage *)captureGuestPreview;
+- (void)animateReturnWithBackdrop:(nullable UIImage *)backdrop;
 
-// Takes the black cover away again, when zContainer didn't open after all.
+// Restores the guest if the launcher could not be opened.
 - (void)fadeBackIn;
 
 @end

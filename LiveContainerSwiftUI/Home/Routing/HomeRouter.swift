@@ -4,21 +4,8 @@
 //
 
 import SwiftUI
+import UserNotifications
 
-/// Routes the URLs zContainer is opened with, and runs the checks the main
-/// window makes when it opens, whatever screens that window shows. App links
-/// go straight to the AppLaunchCoordinator, except install links that arrive
-/// while onboarding shows, while apps it received are still coming in, or
-/// while another app installs, which wait in onboarding's queue. What the
-/// checks find waits here, for the root view to show with
-/// `homeRouting(_:onRoute:)`, as do the questions a certificate sent to
-/// zContainer asks.
-///
-/// It also keeps zContainer's side of the app group it shares with Zeus up to
-/// date: it takes the requests Zeus leaves there, from a link or when the
-/// window comes to the front, and writes the list of apps Zeus reads when
-/// the window opens, after every install or removal, and as zContainer stops
-/// being the active app and again in the background.
 @MainActor
 @Observable
 final class HomeRouter {
@@ -26,43 +13,40 @@ final class HomeRouter {
     @ObservationIgnored let coordinator: AppLaunchCoordinator
     /// The app state the launch checks read, the coordinator's own.
     @ObservationIgnored let sharedModel: SharedModel
-    /// Holds install links while onboarding shows, while apps it received are
-    /// still coming in, or while another app installs, and the apps Zeus sends.
     @ObservationIgnored let onboarding: OnboardingModel
 
-    /// A .p12 file zContainer was asked to open, while its password is
+    /// A .p12 file ryC0 was asked to open, while its password is
     /// asked for.
     var lockedCertificate: LockedCertificate?
-    /// A certificate sent to zContainer, while the person is asked whether
+    /// A certificate sent to ryC0, while the person is asked whether
     /// to use it.
     var certificateOffer: CertificateOffer?
-    /// The team of the certificate just stored from a link, a file or Zeus,
-    /// while zContainer says it's ready.
     var storedCertificateTeam: String?
-    /// Goes up by one whenever a certificate sent to zContainer is stored,
+    /// Goes up by one whenever a certificate sent to ryC0 is stored,
     /// so onboarding reads the certificate again.
     var certificatesStored = 0
 
-    /// A problem a launch check found, or a certificate or a request from
-    /// Zeus ran into, as the person reads it.
     var launchProblem: String?
     /// Why the last app launch failed, in full: the error it left, or a crash
     /// while signing.
     var crashReport = ""
     /// Whether `crashReport` is on screen.
     var isShowingCrashReport = false
+    var opensAppSwitcher = false
+    var notificationTestApp: LCAppModel?
+    @ObservationIgnored private var isSchedulingNotificationTest = false
 
     init(coordinator: AppLaunchCoordinator, onboarding: OnboardingModel) {
         self.coordinator = coordinator
         self.sharedModel = coordinator.sharedModel
         self.onboarding = onboarding
-        coordinator.onAppsChanged = { [sharedModel] in
-            ZeusGroup.writeManifest(from: sharedModel)
+        coordinator.onAppsChanged = {
+            GuestNotificationMonitor.shared.refresh()
         }
     }
 
-    /// Sends a URL zContainer was opened with where it goes, and returns that
-    /// route, or nil when zContainer doesn't handle the URL.
+    /// Sends a URL ryC0 was opened with where it goes, and returns that
+    /// route, or nil when ryC0 doesn't handle the URL.
     @discardableResult
     func dispatchURL(_ url: URL) -> HomeRoute? {
         guard let route = HomeRoute(url: url) else {
@@ -70,69 +54,91 @@ final class HomeRouter {
         }
         switch route {
         case .home:
-            break
+            if #available(iOS 16.0, *) { FullScreenGuestSession.shared.returnHome(openSwitcher: false) }
+        case .ryP0NotificationTest:
+            guard !onboarding.isPresented, notificationTestApp == nil, !isSchedulingNotificationTest else { return nil }
+            let candidates = sharedModel.apps.filter {
+                $0.appInfo.bundleIdentifier() == BundledStore.bundleIdentifier && !$0.appInfo.isLocked && !$0.appInfo.isHidden
+            }
+            let session = FullScreenGuestSession.shared
+            let runningApp = session.runningBundlePath.flatMap { path in
+                candidates.first { $0.appInfo.relativeBundlePath == path }
+            }
+            let app = runningApp ?? candidates.first
+            guard let app else { return nil }
+            session.returnHome(openSwitcher: false)
+            MainWindow.showHome(openingSwitcher: false)
+            notificationTestApp = app
         case .app(let link):
+            if case .install = link {
+                if #available(iOS 16.0, *) { FullScreenGuestSession.shared.returnHome(openSwitcher: false) }
+                MainWindow.showHome(openingSwitcher: false)
+            }
             send(link)
         case .certificate(let link):
             Task { await review(link) }
         case .certificateFile(let url):
             openCertificateFile(url)
-        case .zeusRequests(let ids):
-            Task { await takeZeusRequests(ids) }
         }
         return route
     }
 
-    /// Hands an app link to the coordinator. An install link that arrives
-    /// while onboarding shows, while apps it received are still coming in, or
-    /// while another app installs, waits in onboarding's queue instead,
-    /// downloading at once, since a one-time link from Zeus only answers for
-    /// about a minute.
+    func scheduleNotificationTest(for app: LCAppModel) async {
+        guard !isSchedulingNotificationTest, sharedModel.apps.contains(where: { $0 === app }),
+              !app.appInfo.isLocked, !app.appInfo.isHidden, let bundlePath = app.appInfo.relativeBundlePath else { return }
+        isSchedulingNotificationTest = true
+        defer { isSchedulingNotificationTest = false }
+
+        let center = UNUserNotificationCenter.current()
+        do {
+            guard try await center.requestAuthorization(options: [.alert, .sound]) else {
+                launchProblem = "ryc0.notifications.test.permissionRequired".loc
+                return
+            }
+            let content = UNMutableNotificationContent()
+            content.title = "ryc0.notifications.test.notificationTitle".loc
+            content.body = "ryc0.notifications.test.notificationBody".loc
+            content.sound = .default
+            let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)
+            let request = UNNotificationRequest(identifier: BundledStore.notificationTestIdentifier(for: bundlePath),
+                                                content: content, trigger: trigger)
+            try await center.add(request)
+            LCSharedUtils.recordGuestNotification(request, forApp: bundlePath, container: BundledStore.notificationTestContainer)
+        } catch {
+            launchProblem = error.localizedDescription
+        }
+    }
+
+    /// Hands launches to the coordinator and downloads to the shared queue.
     private func send(_ link: AppLink) {
-        if onboarding.takeLink(link, whileInstalling: coordinator.isInstalling) {
+        if onboarding.takeLink(link) {
             return
         }
         coordinator.handle(link)
     }
 
-    /// Runs when the main window opens: closes it when zContainer's main window
-    /// is already open in another one, runs the launch checks, and opens the
-    /// web page an app asked zContainer to show on its next launch. Then it
-    /// clears out old answers to Zeus, takes the requests Zeus left while no
-    /// link reached zContainer, and writes the list of apps for Zeus.
-    ///
-    /// On iPad, a window that closes again, or the main window running this a
-    /// second time, skips the checks, so what they found doesn't show twice.
-    /// An iPhone runs them every time, as it always has.
     func start(in scene: UIWindowScene?) async {
         guard acceptMainWindow(scene) || SharedModel.isPhone else {
             return
         }
+        if let link = LCSharedUtils.takePendingInstallLink() {
+            dispatchURL(link)
+        }
+        GuestActivityMonitor.shared.start()
+        GuestNotificationMonitor.shared.start()
         checkLastLaunchError()
         checkTeamId()
         checkAndSaveBundleId()
         checkGetTaskAllow()
         checkPrivateContainerBookmark()
         openWebPageForThisLaunch()
-        await checkZeusCertificate()
-        ZeusGroup.sweepResults()
-        await rescanZeusRequests()
-        ZeusGroup.writeManifest(from: sharedModel)
+        await coordinator.installBundledStoreIfNeeded()
+        opensAppSwitcher = LCSharedUtils.takeAppSwitcherRequest()
     }
 
-    /// Runs when the main window comes to the front: takes the requests Zeus
-    /// left while a guest app had the link that named them. When it takes
-    /// any, `onRoute` hears them first, as it would have heard the link, so
-    /// the root view brings up the Home Screen their questions show over.
     func sceneBecameActive(onRoute: @MainActor (HomeRoute) -> Void) async {
-        await rescanZeusRequests(onRoute: onRoute)
-    }
-
-    /// Runs as the main window stops being the active one, as when the person
-    /// starts switching to Zeus, and again when it goes to the background:
-    /// writes the list of apps, so Zeus reads what zContainer holds now.
-    func sceneEnteredBackground() {
-        ZeusGroup.writeManifest(from: sharedModel)
+        GuestActivityMonitor.shared.refresh()
+        GuestNotificationMonitor.shared.refresh()
     }
 
     /// Notes that a window closed. When it was the main window, the next one
@@ -169,7 +175,7 @@ final class HomeRouter {
         return true
     }
 
-    /// Opens the page an app asked zContainer to show, through
+    /// Opens the page an app asked ryC0 to show, through
     /// `LCSharedUtils.setWebPageUrlForNextLaunch`, in the built-in browser.
     private func openWebPageForThisLaunch() {
         guard let webPage = UserDefaults.standard.string(forKey: "webPageToOpen") else {

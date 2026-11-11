@@ -5,10 +5,6 @@
 
 import Foundation
 
-/// Orders two versions of an app the way Zeus orders its releases
-/// (`RunningZeus.compare` in Zeus): dotted numbers part by part, numerically,
-/// with missing parts as 0, so 1.10 comes after 1.2 and 3.0 equals 3.0.0.
-/// Builds only break a tie, and only when both are known.
 enum AppVersionOrder {
     /// How `version` and `build` stand against `otherVersion` and
     /// `otherBuild`: `.orderedAscending` when they are older,

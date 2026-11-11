@@ -36,7 +36,7 @@ struct OnboardingHeader<Symbol: View>: View {
 }
 
 extension OnboardingHeader where Symbol == OnboardingHeaderSymbol {
-    /// A header under a white symbol on a tile of zContainer's pink, as most
+    /// A header under a white symbol on a tile of ryC0's pink, as most
     /// steps have.
     init(systemImage: String, title: String, message: String) {
         self.init(title: title, message: message) {

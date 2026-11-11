@@ -5,9 +5,9 @@
 
 import SwiftUI
 
-/// zContainer's version and build, centered under the last section of
+/// ryC0's version and build, centered under the last section of
 /// Settings > Advanced. Tapping it five times turns on developer mode, which
-/// shows the Developer page until zContainer quits, as tapping the version at
+/// shows the Developer page until ryC0 quits, as tapping the version at
 /// the bottom of LiveContainer's settings did.
 struct SettingsVersionFooter: View {
     @EnvironmentObject private var sharedModel: SharedModel

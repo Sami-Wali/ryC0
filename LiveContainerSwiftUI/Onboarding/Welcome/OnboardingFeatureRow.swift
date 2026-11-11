@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// One thing zContainer does, on the welcome screen: a squircle icon beside
+/// One thing ryC0 does, on the welcome screen: a squircle icon beside
 /// a title and a line about it.
 struct OnboardingFeatureRow: View {
     let feature: OnboardingFeature

@@ -24,7 +24,7 @@ struct LCAboutHeader: View {
                     }
                     .accessibilityHidden(true)
             }
-            Text("zContainer")
+            Text("ryC0")
                 .font(.title2)
                 .bold()
             Text("lc.about.tagline".loc)

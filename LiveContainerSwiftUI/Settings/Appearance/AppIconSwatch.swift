@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// One of zContainer's icons in Settings > Appearance: a picture of it,
+/// One of ryC0's icons in Settings > Appearance: a picture of it,
 /// rounded the way the Home Screen rounds icons, with its name under it, ringed
 /// in the accent color when it's the one in use.
 struct AppIconSwatch: View {

@@ -19,6 +19,8 @@ API_AVAILABLE(ios(16.0))
 @optional
 - (void)appSceneVC:(AppSceneViewController*)vc didUpdateFromSettings:(UIMutableApplicationSceneSettings *)settings transitionContext:(id)context lifecycleActionType:(uint32_t)actionType;
 - (void)appSceneVCWillActivateScene:(AppSceneViewController *)vc;
+- (void)appSceneVCGuestDidDraw:(AppSceneViewController *)vc;
+- (void)appSceneVCRequestedHome:(AppSceneViewController *)vc;
 @end
 
 API_AVAILABLE(ios(16.0))
@@ -28,12 +30,19 @@ API_AVAILABLE(ios(16.0))
 @property(nonatomic) int pid;
 @property(nonatomic) id<AppSceneViewControllerDelegate> delegate;
 @property(nonatomic) BOOL isAppRunning;
+@property(nonatomic, readonly) NSTimeInterval terminationGracePeriod;
+@property(nonatomic, readonly) bool isNativeWindow;
+@property(nonatomic, readonly) BOOL hostedGuestHasDrawn;
 @property(nonatomic) BOOL shouldIgnoreSceneUpdates, shouldSkipDebounceOnce;
 @property(nonatomic) CGFloat scaleRatio;
 @property(nonatomic) UIView* contentView;
 @property(nonatomic) _UIScenePresenter *presenter;
 @property(nonatomic) _UISceneHostingController *hostingController API_AVAILABLE(ios(17.0));
 - (instancetype)initWithBundleId:(NSString*)bundleId dataUUID:(NSString*)dataUUID delegate:(id<AppSceneViewControllerDelegate>)delegate;
+- (nullable instancetype)initWithBundleId:(nonnull NSString *)bundleId dataUUID:(nonnull NSString *)dataUUID
+    fullScreenDelegate:(nonnull id<AppSceneViewControllerDelegate>)delegate launchURL:(nullable NSString *)launchURL;
+- (void)setHostedGuestVisible:(BOOL)visible;
+- (void)requestHostedGuestPreview:(nonnull void (^)(UIImage * _Nullable image))completion;
 - (void)setBackgroundNotificationEnabled:(bool)enabled;
 - (void)updateFrameWithSettingsBlock:(void (^)(UIMutableApplicationSceneSettings *settings))block;
 - (void)updateSettingsWithBlock:(void(^)(UIMutableApplicationSceneSettings *settings))block;

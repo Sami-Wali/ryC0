@@ -11,7 +11,7 @@ struct HomeSearchLabel: View {
         HStack(spacing: HomeDesign.pillSpacing) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: HomeDesign.pillFontSize - 1, weight: .semibold))
-            Text("zc.home.search".loc)
+            Text("ryc0.home.search".loc)
                 .font(.system(size: HomeDesign.pillFontSize, weight: .medium))
         }
         .foregroundStyle(HomeDesign.pillTextColor)

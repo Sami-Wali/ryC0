@@ -1,0 +1,67 @@
+name: RYStoreIntegration
+options:
+  deploymentTarget:
+    iOS: "17.5"
+settings:
+  base:
+    HEADER_SEARCH_PATHS:
+      - ${RYC0_REPO}/LiveContainerSwiftUI/Models
+      - ${RYC0_REPO}/LiveContainerSwiftUI/Utilities
+      - ${RYC0_REPO}/LiveContainer
+      - ${RYC0_REPO}/MultitaskSupport
+      - ${RYC0_REPO}/litehook/src
+targets:
+  IntegrationHost:
+    type: application
+    platform: iOS
+    sources: [Host]
+    info:
+      path: ${RYC0_REPO}/Tests/StoreIntegration/GeneratedInfo.plist
+      properties:
+        CFBundleURLTypes:
+          - CFBundleURLSchemes: [ryc0]
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.ry0.store.integration-tests
+    dependencies:
+      - framework: ${RYC0_TEST_PRODUCTS}/LiveContainerSwiftUI.framework
+        embed: true
+      - framework: ${RYC0_TEST_PRODUCTS}/LiveContainerShared.framework
+        embed: true
+  StoreIntegrationTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.ry0.store.integration-tests.unit
+      GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: IntegrationHost
+      - framework: ${RYC0_TEST_PRODUCTS}/LiveContainerSwiftUI.framework
+        embed: false
+      - framework: ${RYC0_TEST_PRODUCTS}/LiveContainerShared.framework
+        embed: false
+  StoreUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [UITests]
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.ry0.store.integration-tests.ui
+      GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: IntegrationHost
+schemes:
+  RYStoreIntegration:
+    build:
+      targets:
+        IntegrationHost: all
+        StoreIntegrationTests: [test]
+    test:
+      targets: [StoreIntegrationTests]
+  RYStoreUI:
+    build:
+      targets:
+        StoreUITests: [test]
+    test:
+      targets: [StoreUITests]

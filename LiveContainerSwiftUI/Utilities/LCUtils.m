@@ -38,14 +38,12 @@
         return liveProcessBundle.bundleIdentifier;
     }
     
-    // in LC2, attempt to guess LC1's LiveProcess extension. Only zContainer's own
-    // copies guess, so a build under another App ID (the test build) never runs its
-    // apps in zContainer's extension.
+    // A secondary ryC0 copy may use the primary ryC0 extension.
     NSString *ownBundleID = NSBundle.mainBundle.bundleIdentifier;
-    if(![ownBundleID isEqualToString:@"app.reiko.zcontainer"] && ![ownBundleID hasPrefix:@"app.reiko.zcontainer."]) {
+    if(![ownBundleID isEqualToString:@"com.ry0.ryC0"] && ![ownBundleID hasPrefix:@"com.ry0.ryC0."]) {
         return nil;
     }
-    NSString *bundleID = [NSString stringWithFormat:@"app.reiko.zcontainer.%@.LiveProcess", LCSharedUtils.teamIdentifier];
+    NSString *bundleID = [NSString stringWithFormat:@"com.ry0.ryC0.%@.LiveProcess", LCSharedUtils.teamIdentifier];
     if([NSExtension extensionWithIdentifier:bundleID error:nil]) {
         return bundleID;
     }
@@ -54,7 +52,7 @@
 }
 
 + (void)launchMultitaskGuestApp:(NSString *)displayName completionHandler:(void (^)(NSNumber *pid, NSError *error))completionHandler {
-    // Taken before anything can fail: left behind, zContainer's next start
+    // Taken before anything can fail: left behind, ryC0's next start
     // would turn into the app, without asking for Face ID for a locked one.
     NSUserDefaults *lcUserDefaults = NSUserDefaults.standardUserDefaults;
     NSString* bundleId = [lcUserDefaults stringForKey:@"selected"];
@@ -64,7 +62,7 @@
     [lcUserDefaults removeObjectForKey:@"selectedContainer"];
 
     if(!self.liveProcessBundleIdentifier) {
-        NSError *error = [NSError errorWithDomain:displayName code:2 userInfo:@{NSLocalizedDescriptionKey: @"LiveProcess extension not found. Please reinstall zContainer and select Keep Extensions"}];
+        NSError *error = [NSError errorWithDomain:displayName code:2 userInfo:@{NSLocalizedDescriptionKey: @"LiveProcess extension not found. Please reinstall ryC0 and select Keep Extensions"}];
         if (completionHandler) completionHandler(nil, error);
         return;
     }

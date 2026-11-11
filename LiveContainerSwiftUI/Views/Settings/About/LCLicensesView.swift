@@ -2,7 +2,7 @@
 //  LCLicensesView.swift
 //  LiveContainerSwiftUI
 //
-//  Settings > About zContainer > Licenses: the license of each open source
+//  Settings > About ryC0 > Licenses: the license of each open source
 //  project inside the app, each opening its full text.
 //
 

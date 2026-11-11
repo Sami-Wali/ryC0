@@ -9,11 +9,14 @@ import Foundation
 enum WallpaperError: LocalizedError {
     /// The photo isn't a picture iOS can read.
     case unreadable
+    case unreadableTendies
 
     var errorDescription: String? {
         switch self {
+        case .unreadableTendies:
+            "ryc0.wallpaper.tendiesUnreadable".loc
         case .unreadable:
-            "zc.wallpaper.unreadable".loc
+            "ryc0.wallpaper.unreadable".loc
         }
     }
 }

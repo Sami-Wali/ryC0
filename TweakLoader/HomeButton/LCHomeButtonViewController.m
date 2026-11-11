@@ -1,6 +1,8 @@
 #import "LCHomeButtonViewController.h"
 #import "LCHomeButtonPlacement.h"
 #import "LCHomeButtonView.h"
+#import "Localization.h"
+#import "../../LiveContainer/utils.h"
 #import <objc/message.h>
 
 // The space between the button and the edges of the screen's safe area.
@@ -14,8 +16,10 @@ static const CGFloat LCHomeButtonFlingCarry = 0.12;
 
 @interface LCHomeButtonViewController ()
 @property (nonatomic) LCHomeButtonView *button;
+@property (nonatomic) UIButton *homeHandle;
+@property (nonatomic) UIButton *clockControl;
 @property (nonatomic) LCHomeButtonPlacement *placement;
-// The black view over the app while zContainer opens.
+// The Home Screen and the outgoing guest snapshot during the handoff.
 @property (nonatomic, nullable) UIView *cover;
 @property (nonatomic) BOOL isDragging;
 // Where the finger holds the button, from the button's center.
@@ -41,8 +45,65 @@ static const CGFloat LCHomeButtonFlingCarry = 0.12;
     [button addTarget:self action:@selector(buttonPressed) forControlEvents:UIControlEventTouchUpInside];
     [button addTarget:self action:@selector(buttonLetGo) forControlEvents:UIControlEventTouchUpOutside | UIControlEventTouchCancel];
     [button addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(buttonDragged:)]];
+    [button addGestureRecognizer:[[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(buttonHeld:)]];
+    button.accessibilityCustomActions = @[
+        [[UIAccessibilityCustomAction alloc] initWithName:@"ryc0.switcher.title".loc
+                                                   target:self selector:@selector(accessibilityOpenSwitcher:)]
+    ];
+    button.hidden = self.homeControl != LCGuestHomeControlFloatingButton;
     [self.view addSubview:button];
     self.button = button;
+    if (self.homeControl == LCGuestHomeControlFloatingButton) return;
+
+    if (self.homeControl == LCGuestHomeControlClock) {
+        UIButton *clock = [UIButton buttonWithType:UIButtonTypeCustom];
+        clock.translatesAutoresizingMaskIntoConstraints = NO;
+        clock.accessibilityLabel = @"ryc0.home.homeButton".loc;
+        [clock addTarget:self action:@selector(buttonPressed) forControlEvents:UIControlEventTouchUpInside];
+        [self.view addSubview:clock];
+        self.clockControl = clock;
+        NSLayoutConstraint *safeTop = [clock.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor];
+        safeTop.priority = UILayoutPriorityDefaultHigh;
+        [NSLayoutConstraint activateConstraints:@[
+            [clock.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+            [clock.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [clock.widthAnchor constraintEqualToConstant:112],
+            [clock.heightAnchor constraintGreaterThanOrEqualToConstant:44],
+            safeTop
+        ]];
+        return;
+    }
+
+    UIButton *handle = [UIButton buttonWithType:UIButtonTypeCustom];
+    handle.translatesAutoresizingMaskIntoConstraints = NO;
+    handle.backgroundColor = [UIColor.blackColor colorWithAlphaComponent:0.45];
+    handle.layer.cornerRadius = 15;
+    handle.accessibilityLabel = @"ryc0.home.homeButton".loc;
+    [handle addTarget:self action:@selector(buttonPressed) forControlEvents:UIControlEventTouchUpInside];
+    [handle addGestureRecognizer:[[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleSwiped:)]];
+    [handle addGestureRecognizer:[[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(buttonHeld:)]];
+    handle.accessibilityCustomActions = button.accessibilityCustomActions;
+    UIView *bar = [[UIView alloc] init];
+    bar.translatesAutoresizingMaskIntoConstraints = NO;
+    bar.backgroundColor = [UIColor.whiteColor colorWithAlphaComponent:0.92];
+    bar.layer.cornerRadius = 2.5;
+    bar.userInteractionEnabled = NO;
+    [handle addSubview:bar];
+    [self.view addSubview:handle];
+    self.homeHandle = handle;
+    NSLayoutConstraint *safeBottom = [handle.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-5];
+    safeBottom.priority = UILayoutPriorityDefaultHigh;
+    [NSLayoutConstraint activateConstraints:@[
+        [handle.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [handle.bottomAnchor constraintLessThanOrEqualToAnchor:self.view.bottomAnchor constant:-27],
+        safeBottom,
+        [handle.widthAnchor constraintEqualToConstant:84],
+        [handle.heightAnchor constraintEqualToConstant:34],
+        [bar.centerXAnchor constraintEqualToAnchor:handle.centerXAnchor],
+        [bar.centerYAnchor constraintEqualToAnchor:handle.centerYAnchor],
+        [bar.widthAnchor constraintEqualToConstant:42],
+        [bar.heightAnchor constraintEqualToConstant:5]
+    ]];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
@@ -85,6 +146,26 @@ static const CGFloat LCHomeButtonFlingCarry = 0.12;
     if (self.pressHandler) {
         self.pressHandler();
     }
+}
+
+- (void)handleSwiped:(UIPanGestureRecognizer *)gesture {
+    CGPoint movement = [gesture translationInView:self.view];
+    if (gesture.state == UIGestureRecognizerStateEnded && -movement.y > MAX(28, fabs(movement.x))) {
+        [self buttonPressed];
+    }
+}
+
+- (void)buttonHeld:(UILongPressGestureRecognizer *)gesture {
+    if (gesture.state == UIGestureRecognizerStateBegan) {
+        [self accessibilityOpenSwitcher:nil];
+    }
+}
+
+- (BOOL)accessibilityOpenSwitcher:(nullable UIAccessibilityCustomAction *)action {
+    if (!self.switcherHandler) return NO;
+    [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium] impactOccurred];
+    self.switcherHandler();
+    return YES;
 }
 
 // Follows the finger, then lets the button settle against the edge nearest
@@ -162,28 +243,79 @@ static const CGFloat LCHomeButtonFlingCarry = 0.12;
     });
 }
 
-#pragma mark Going back to zContainer
+#pragma mark Going back to ryC0
 
-- (void)fadeOutWithCompletion:(void (^)(void))completion {
+- (UIImage *)captureGuestPreview {
+    UIWindow *guest = self.appViewController.viewIfLoaded.window;
+    if (!guest || CGRectIsEmpty(guest.bounds)) return nil;
+    UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
+    format.scale = MIN(1, 520.0 / MAX(guest.bounds.size.width, guest.bounds.size.height));
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithBounds:guest.bounds format:format];
+    __block BOOL drawn = NO;
+    UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+        drawn = [guest drawViewHierarchyInRect:guest.bounds afterScreenUpdates:NO];
+    }];
+    return drawn ? image : nil;
+}
+
+- (void)animateReturnWithBackdrop:(UIImage *)backdrop {
+    self.dimmingGeneration += 1;
+    self.button.alpha = 0;
+    self.homeHandle.alpha = 0;
+    self.clockControl.userInteractionEnabled = NO;
     [self.cover removeFromSuperview];
-    UIView *cover = [[UIView alloc] initWithFrame:self.view.bounds];
+    NSUserDefaults *defaults = NSUserDefaults.lcUserDefaults;
+    NSString *storedFrame = [defaults stringForKey:@"ryc0.homeReturnIcon"];
+    [defaults removeObjectForKey:@"ryc0.homeReturnIcon"];
+    CGRect normalized = storedFrame ? CGRectFromString(storedFrame) : CGRectZero;
+    if (!backdrop) return;
+    UIWindow *guest = self.appViewController.viewIfLoaded.window;
+    UIView *snapshot = [guest snapshotViewAfterScreenUpdates:NO];
+    if (!snapshot) return;
+
+    UIImageView *cover = [[UIImageView alloc] initWithImage:backdrop];
+    cover.frame = self.view.bounds;
     cover.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    cover.backgroundColor = UIColor.blackColor;
-    cover.alpha = 0;
+    cover.contentMode = UIViewContentModeScaleAspectFill;
+    cover.clipsToBounds = YES;
+    cover.userInteractionEnabled = YES;
+    snapshot.frame = cover.bounds;
+    UIView *viewport = [[UIView alloc] initWithFrame:cover.bounds];
+    viewport.layer.cornerCurve = kCACornerCurveContinuous;
+    viewport.clipsToBounds = YES;
+    [viewport addSubview:snapshot];
+    [cover addSubview:viewport];
     [self.view addSubview:cover];
     self.cover = cover;
-    [UIView animateWithDuration:0.25 delay:0 options:UIViewAnimationOptionCurveEaseIn animations:^{
-        cover.alpha = 1;
-    } completion:^(BOOL finished) {
-        completion();
-    }];
+    CGSize size = cover.bounds.size;
+    CGRect icon = CGRectMake(normalized.origin.x * size.width, normalized.origin.y * size.height,
+                             normalized.size.width * size.width, normalized.size.height * size.height);
+    if (UIAccessibilityIsReduceMotionEnabled() || CGRectIsEmpty(icon) || !CGRectContainsRect(cover.bounds, icon)) {
+        [UIView animateWithDuration:0.16 animations:^{ snapshot.alpha = 0; }];
+        return;
+    }
+
+    CGFloat scale = MAX(icon.size.width / size.width, icon.size.height / size.height);
+    [UIView animateWithDuration:0.30 delay:0 usingSpringWithDamping:0.88 initialSpringVelocity:0
+                         options:UIViewAnimationOptionBeginFromCurrentState animations:^{
+        viewport.bounds = CGRectMake(0, 0, icon.size.width, icon.size.height);
+        viewport.center = CGPointMake(CGRectGetMidX(icon), CGRectGetMidY(icon));
+        viewport.layer.cornerRadius = icon.size.width * 0.225;
+        snapshot.center = CGPointMake(CGRectGetMidX(viewport.bounds), CGRectGetMidY(viewport.bounds));
+        snapshot.transform = CGAffineTransformMakeScale(scale, scale);
+    } completion:nil];
+    [UIView animateWithDuration:0.16 delay:0.14 options:UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{ snapshot.alpha = 0; } completion:nil];
 }
 
 - (void)fadeBackIn {
     UIView *cover = self.cover;
     self.cover = nil;
+    self.clockControl.userInteractionEnabled = YES;
     [UIView animateWithDuration:0.25 animations:^{
         cover.alpha = 0;
+        self.button.alpha = 1;
+        self.homeHandle.alpha = 1;
     } completion:^(BOOL finished) {
         [cover removeFromSuperview];
     }];

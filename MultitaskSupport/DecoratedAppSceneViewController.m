@@ -1,4 +1,5 @@
 #import "DecoratedAppSceneViewController.h"
+#import "LCSharedUtils.h"
 #import "ResizeHandleView.h"
 #import "LiveContainerSwiftUI-Swift.h"
 #import "AppSceneViewController.h"
@@ -208,6 +209,12 @@ static const CGFloat LCDockFadeShare = 0.35;
     // The title menu keeps these, so they hold the window weakly
     __weak typeof(self) weakSelf = self;
     NSArray *menuItems = @[
+        [UIAction actionWithTitle:@"ryc0.switcher.home".loc image:[UIImage systemImageNamed:@"house"] identifier:nil handler:^(UIAction *action) {
+            [MainWindow showHomeWithOpeningSwitcher:NO];
+        }],
+        [UIAction actionWithTitle:@"ryc0.switcher.title".loc image:[UIImage systemImageNamed:@"rectangle.stack"] identifier:nil handler:^(UIAction *action) {
+            [MainWindow showHomeWithOpeningSwitcher:YES];
+        }],
         [UIAction actionWithTitle:@"lc.multitask.copyPid".loc image:[UIImage systemImageNamed:@"doc.on.doc"] identifier:nil handler:^(UIAction * _Nonnull action) {
             UIPasteboard.generalPasteboard.string = @(weakSelf.appSceneVC.pid).stringValue;
         }],
@@ -699,6 +706,12 @@ static const CGFloat LCDockFadeShare = 0.35;
     });
 }
 
+- (void)appSceneVCRequestedHome:(AppSceneViewController *)vc {
+    if (vc == self.appSceneVC && self.isMaximized && !self.view.hidden && self.view.window) {
+        [MainWindow showHomeWithOpeningSwitcher:NO];
+    }
+}
+
 - (void)appSceneVCWillActivateScene:(AppSceneViewController *)vc {
     // Set up initial settings such as frame, safe area, etc
     [self appSceneVC:vc didUpdateFromSettings:vc.presenter.scene.settings.mutableCopy transitionContext:nil lifecycleActionType:0];
@@ -1182,6 +1195,13 @@ static const CGFloat LCDockFadeShare = 0.35;
         CGFloat width = self.view.bounds.size.width;
         BOOL leading = self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft ? x > width / 2 : x < width / 2;
         if (!leading) return NO;
+        if ([LCSharedUtils guestHomeControl] == LCGuestHomeControlClock) {
+            CGFloat fromEdge = self.view.effectiveUserInterfaceLayoutDirection == UIUserInterfaceLayoutDirectionRightToLeft ? width - x : x;
+            if (fromEdge >= 0 && fromEdge < MIN(112, width / 2)) {
+                [self appSceneVCRequestedHome:self.appSceneVC];
+                return YES;
+            }
+        }
     }
     [self revealFloatingControlsFor:4.0];
     return YES;

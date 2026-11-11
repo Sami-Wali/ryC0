@@ -2,8 +2,8 @@
 //  LCAboutView.swift
 //  LiveContainerSwiftUI
 //
-//  Settings > About zContainer: who made LiveContainer, which zContainer is
-//  built on, where zContainer's source is, the notices the AGPL asks a
+//  Settings > About ryC0: who made LiveContainer, which ryC0 is
+//  built on, where ryC0's source is, the notices the AGPL asks a
 //  modified version to show, and the license texts that come with the app.
 //
 
@@ -18,6 +18,7 @@ struct LCAboutView: View {
             .listRowBackground(Color.clear)
 
             Section {
+                LCAboutLinkRow(title: "zContainer", detail: LCAboutLinks.display(LCAboutLinks.upstream), url: LCAboutLinks.upstream)
                 LCAboutLinkRow(title: "LiveContainer", detail: LCAboutLinks.display(LCAboutLinks.liveContainer),
                                url: LCAboutLinks.liveContainer)
                 LCAboutLinkRow(title: "Duy Tran (khanhduytran0)", detail: "lc.about.creator".loc,
@@ -32,12 +33,13 @@ struct LCAboutView: View {
             }
 
             Section {
-                LCAboutLinkRow(title: "lc.about.sourceCode".loc, detail: LCAboutLinks.display(LCAboutLinks.source),
-                               url: LCAboutLinks.source)
+                if let source = LCAboutLinks.source {
+                    LCAboutLinkRow(title: "lc.about.sourceCode".loc, detail: LCAboutLinks.display(source), url: source)
+                }
                 NavigationLink {
-                    LCLicenseView(license: .zContainer)
+                    LCLicenseView(license: .ryC0)
                 } label: {
-                    LCAboutRowLabel(title: LCLicense.zContainer.licenseName, detail: "lc.about.licenseDetail".loc)
+                    LCAboutRowLabel(title: LCLicense.ryC0.licenseName, detail: "lc.about.licenseDetail".loc)
                 }
                 NavigationLink {
                     LCLicensesView()

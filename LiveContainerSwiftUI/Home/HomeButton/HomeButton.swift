@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// zContainer's stand-in for the iPhone's Home button: a round glass button
+/// ryC0's stand-in for the iPhone's Home button: a round glass button
 /// with AssistiveTouch's rings that does what pressing Home does. It looks the
 /// same over the wallpaper, over Settings in light or dark mode, and
 /// over apps, where TweakLoader draws the same button in UIKit.
@@ -19,7 +19,7 @@ struct HomeButton: View {
     var body: some View {
         Button(action: press) {
             Label {
-                Text("zc.home.homeButton".loc)
+                Text("ryc0.home.homeButton".loc)
             } icon: {
                 HomeButtonGlyph()
             }
@@ -30,7 +30,7 @@ struct HomeButton: View {
         }
         .buttonStyle(HomeButtonPressStyle())
         .sensoryFeedback(.impact(weight: .light), trigger: presses)
-        .accessibilityHint("zc.home.homeButtonHint".loc)
+        .accessibilityHint("ryc0.home.homeButtonHint".loc)
     }
 
     private func press() {

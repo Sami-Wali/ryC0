@@ -5,21 +5,13 @@
 
 import SwiftUI
 
-/// Connects the main window's root view to the HomeRouter: runs the launch
-/// checks when the window opens, routes the URLs zContainer is opened with,
-/// tells the router when the window comes to the front, stops being the active
-/// one or goes to the background, notices when the window closes, and shows
-/// what the router and the AppLaunchCoordinator ask for, including a
-/// certificate sent to zContainer. `onRoute` hears each route after the
-/// router sent it on, so the root view can bring up the screen it concerns.
-/// It also hears the requests from Zeus that the window finds as it comes
-/// to the front, just before the router takes them.
 struct HomeRouting: ViewModifier {
     let router: HomeRouter
     let onRoute: @MainActor (HomeRoute) -> Void
 
     @EnvironmentObject private var sceneDelegate: SceneDelegate
     @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject private var guest = FullScreenGuestSession.shared
 
     func body(content: Content) -> some View {
         @Bindable var router = router
@@ -37,6 +29,17 @@ struct HomeRouting: ViewModifier {
                 }
             } message: { problem in
                 Text(problem)
+            }
+            .alert("ryc0.notifications.test.confirmTitle".loc, isPresented: Binding(
+                get: { router.notificationTestApp != nil && !guest.isGuestVisible },
+                set: { if !$0 { router.notificationTestApp = nil } }
+            ), presenting: router.notificationTestApp) { app in
+                Button("ryc0.notifications.test.send".loc) {
+                    Task { await router.scheduleNotificationTest(for: app) }
+                }
+                Button("lc.common.cancel".loc, role: .cancel) { }
+            } message: { _ in
+                Text("ryc0.notifications.test.confirmBody".loc)
             }
             .certificateImportPresentation(router)
             .sheet(isPresented: $router.isShowingCrashReport) {
@@ -58,21 +61,12 @@ struct HomeRouting: ViewModifier {
             }
     }
 
-    /// Tells the router the window came to the front, stopped being the
-    /// active one, as when the person starts switching to Zeus, or went to
-    /// the background. The list of apps is written both of those times, so
-    /// Zeus, which reads it as it becomes active, finds what zContainer holds
-    /// now. Passing through inactive on the way back changes nothing. When
-    /// coming to the front takes requests Zeus left, `onRoute` hears them
-    /// before they're taken, as it hears a link from Zeus.
     private func scenePhaseChanged(from oldPhase: ScenePhase, to newPhase: ScenePhase) {
         switch newPhase {
         case .active:
             Task {
                 await router.sceneBecameActive(onRoute: onRoute)
             }
-        case .inactive where oldPhase == .active, .background:
-            router.sceneEnteredBackground()
         default:
             break
         }

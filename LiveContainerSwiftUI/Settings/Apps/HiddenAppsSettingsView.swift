@@ -17,7 +17,7 @@ struct HiddenAppsSettingsView: View {
         List {
             Section {
                 if sharedModel.hiddenApps.isEmpty {
-                    Text("zc.home.noHiddenApps".loc)
+                    Text("ryc0.home.noHiddenApps".loc)
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(hiddenApps, id: \.self) { app in
@@ -29,13 +29,13 @@ struct HiddenAppsSettingsView: View {
                     }
                 }
             } footer: {
-                Text("zc.settings.apps.hiddenFooter".loc)
+                Text("ryc0.settings.apps.hiddenFooter".loc)
             }
 
             Section {
                 Toggle("lc.settings.strictHiding".loc, isOn: $strictHiding)
             } footer: {
-                Text("zc.settings.apps.strictHidingFooter".loc)
+                Text("ryc0.settings.apps.strictHidingFooter".loc)
             }
         }
         .navigationTitle("lc.appList.hiddenApps".loc)

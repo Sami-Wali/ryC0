@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// The screen open over the Home Screen: zContainer's Settings, or an app's
+/// The screen open over the Home Screen: ryC0's Settings, or an app's
 /// settings. The Home button at the bottom goes back to the Home Screen from
 /// any of its pages. Settings on an iPad wide enough for its sidebar shows
 /// the button at the bottom of the sidebar instead.
@@ -26,6 +26,8 @@ struct HomePresentedScreenView: View {
                 SettingsView()
             case .appSettings(let app):
                 HomeAppSettingsScreen(app: app)
+            case .guest:
+                EmptyView()
             }
         }
         .homeButtonBar(isShown: showsHomeButtonBar, action: model.goHome)

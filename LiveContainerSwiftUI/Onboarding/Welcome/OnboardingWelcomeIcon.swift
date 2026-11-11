@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// zContainer's icon on the welcome screen, which puts itself together: the
+/// ryC0's icon on the welcome screen, which puts itself together: the
 /// pink tile swells in, then its apps pop onto it from the top left, with a
 /// light tap as they start. With Reduce Motion the icon only fades in, and
 /// with VoiceOver it's there from the start.
@@ -15,10 +15,10 @@ struct OnboardingWelcomeIcon: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
 
-    @State private var stage = ZContainerMarkStage.hidden
+    @State private var stage = RyC0MarkStage.hidden
 
     var body: some View {
-        ZContainerMark(stage: stage)
+        RyC0Mark(stage: stage)
             .sensoryFeedback(.impact(weight: .light, intensity: 0.7), trigger: stage) { _, newStage in
                 newStage == .apps
             }
@@ -32,7 +32,7 @@ struct OnboardingWelcomeIcon: View {
         if voiceOverEnabled {
             stage = .apps
         } else if reduceMotion {
-            // ZContainerMark keeps its parts whole with Reduce Motion, so
+            // RyC0Mark keeps its parts whole with Reduce Motion, so
             // only their opacity changes.
             withAnimation(OnboardingDesign.markFade) {
                 stage = .apps

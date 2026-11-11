@@ -79,7 +79,7 @@ typedef NS_ENUM(NSInteger, MultitaskSpecified){
 - (void)clearIconCache;
 - (NSString*)displayName;
 - (NSString*)bundlePath;
-// Why the app's executable can't run in zContainer, read without changing it:
+// Why the app's executable can't run in ryC0, read without changing it:
 // it's missing, isn't a Mach-O, or is encrypted. Nil when it can run.
 - (nullable NSString *)executableProblem;
 - (NSString*)bundleIdentifier;

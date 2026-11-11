@@ -76,7 +76,7 @@
 
 - (NSMutableArray<NSString *>*)urlSchemes {
     // Every URL scheme the app declares, in order. The types are checked, as
-    // a value an app got wrong would otherwise crash zContainer each time it
+    // a value an app got wrong would otherwise crash ryC0 each time it
     // starts, before the app could be removed.
     NSMutableArray<NSString *> *urlSchemes = [[NSMutableArray alloc] init];
     NSArray *urlTypes = _infoPlist[@"CFBundleURLTypes"];
@@ -361,34 +361,35 @@ static UIImage* LCDrawHomeScreenIcon(NSString* bundlePath, BOOL isDarkIcon) {
     
     UIImage* icon = [self generateLiveContainerWrappedIconWithStyle:style];
     
+    NSString *profileIdentifier = [NSString stringWithFormat:@"%@.%@", NSBundle.mainBundle.bundleIdentifier, self.bundleIdentifier];
     NSDictionary *payload = @{
         @"FullScreen": @YES,
         @"Icon": UIImagePNGRepresentation(icon),
         @"IgnoreManifestScope": @YES,
         @"IsRemovable": @YES,
         @"Label": self.displayName,
-        @"PayloadDescription": [NSString stringWithFormat:@"Web Clip for launching %@ (%@) in zContainer", self.displayName, self.bundlePath.lastPathComponent],
+        @"PayloadDescription": [NSString stringWithFormat:@"Web Clip for launching %@ (%@) in ryC0", self.displayName, self.bundlePath.lastPathComponent],
         @"PayloadDisplayName": self.displayName,
-        @"PayloadIdentifier": self.bundleIdentifier,
+        @"PayloadIdentifier": [profileIdentifier stringByAppendingString:@".webclip"],
         @"PayloadType": @"com.apple.webClip.managed",
         @"PayloadUUID": NSUUID.UUID.UUIDString,
         @"PayloadVersion": @(1),
         @"Precomposed": @NO,
-        @"toPayloadOrganization": @"zContainer",
+        @"toPayloadOrganization": @"ryC0",
         @"URL": appClipUrl
     };
     return @{
         @"ConsentText": @{
-            @"default": [NSString stringWithFormat:@"This profile installs a web clip which opens %@ (%@) in zContainer", self.displayName, self.bundlePath.lastPathComponent]
+            @"default": [NSString stringWithFormat:@"This profile installs a web clip which opens %@ (%@) in ryC0", self.displayName, self.bundlePath.lastPathComponent]
         },
         @"PayloadContent": @[payload],
         @"PayloadDescription": payload[@"PayloadDescription"],
         @"PayloadDisplayName": self.displayName,
-        @"PayloadIdentifier": self.bundleIdentifier,
-        @"PayloadOrganization": @"zContainer",
+        @"PayloadIdentifier": profileIdentifier,
+        @"PayloadOrganization": @"ryC0",
         @"PayloadRemovalDisallowed": @(NO),
         @"PayloadType": @"Configuration",
-        @"PayloadUUID": @"345097fb-d4f7-4a34-ab90-2e3f1ad62eed",
+        @"PayloadUUID": NSUUID.UUID.UUIDString,
         @"PayloadVersion": @(1),
     };
 }
@@ -433,23 +434,27 @@ static UIImage* LCDrawHomeScreenIcon(NSString* bundlePath, BOOL isDarkIcon) {
     int currentPatchRev = 7;
     bool needPatch = [info[@"LCPatchRevision"] intValue] < currentPatchRev;
     if (needPatch || forceSign) {
-        // copy-delete-move to avoid EXC_BAD_ACCESS (SIGKILL - CODESIGNING)
+        // Use a fresh inode before patching to avoid a cached code signature.
         NSString *backupPath = [NSString stringWithFormat:@"%@/%@_LiveContainerPatchBackUp", appPath, _infoPlist[@"CFBundleExecutable"]];
         NSError *err = nil;
         if ([fm fileExistsAtPath:execPath]) {
             // a backup left by an interrupted run is stale while the executable still exists
             [fm removeItemAtPath:backupPath error:nil];
-            // only delete the executable once its copy exists
             if (![fm copyItemAtPath:execPath toPath:backupPath error:&err]) {
                 [fm removeItemAtPath:backupPath error:nil];
                 [NSUserDefaults.standardUserDefaults removeObjectForKey:@"SigningInProgress"];
                 completetionHandler(NO, err.localizedDescription);
                 return;
             }
-            [fm removeItemAtPath:execPath error:nil];
         }
-        // also puts the executable back when an earlier run stopped between the delete and the move
-        [fm moveItemAtPath:backupPath toPath:execPath error:nil];
+        // Replaces the executable atomically, or restores the backup from an
+        // older interrupted install if the executable is missing.
+        if (rename(backupPath.fileSystemRepresentation, execPath.fileSystemRepresentation) != 0) {
+            err = [NSError errorWithDomain:NSPOSIXErrorDomain code:errno userInfo:nil];
+            [NSUserDefaults.standardUserDefaults removeObjectForKey:@"SigningInProgress"];
+            completetionHandler(NO, err.localizedDescription);
+            return;
+        }
     }
     
     bool is32bit = false;

@@ -2,10 +2,12 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>RYC0SourceURL</key>
+	<string>$(RYC0_SOURCE_URL)</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDisplayName</key>
-	<string>zContainer</string>
+	<string>ryC0</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -30,7 +32,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>zContainer</string>
+	<string>ryC0</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -41,10 +43,10 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>app.reiko.zcontainer.urlscheme</string>
+			<string>$(PRODUCT_BUNDLE_IDENTIFIER).urlscheme</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>zcontainer</string>
+				<string>ryc0</string>
 			</array>
 		</dict>
 	</array>
@@ -71,8 +73,7 @@
 	<string>public.app-category.education</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
-		<string>zcontainer</string>
-		<string>zeus</string>
+		<string>ryc0</string>
 	</array>
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
@@ -201,6 +202,8 @@
 	<string>The guest app is requesting for this permission.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>The guest app is requesting for this permission.</string>
+	<key>NSSupportsLiveActivities</key>
+	<true/>
 	<key>NSUserTrackingUsageDescription</key>
 	<string>The guest app is requesting for this permission.</string>
 	<key>SBAppUsesLocalNotifications</key>
@@ -307,25 +310,33 @@
 	<string>LaunchScreen</string>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
-		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
-	</array>
-	<key>UISupportedInterfaceOrientations~ipad</key>
-	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 		<string>UIInterfaceOrientationPortraitUpsideDown</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportsDocumentBrowser</key>
 	<true/>
-	<key>ZeusCompanion</key>
-	<dict>
-		<key>Kind</key>
-		<string>zContainer</string>
-		<key>Protocol</key>
-		<integer>1</integer>
-	</dict>
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.archive</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Tendies Wallpaper</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.leemin.tendies</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>tendies</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>

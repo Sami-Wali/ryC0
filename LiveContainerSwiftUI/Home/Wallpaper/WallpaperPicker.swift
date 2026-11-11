@@ -23,7 +23,7 @@ struct WallpaperPicker: ViewModifier {
         content
             .photosPicker(isPresented: $isPresented, selection: $selection, matching: .images, preferredItemEncoding: .current)
             .onChange(of: selection, selectionChanged)
-            .alert("zc.wallpaper.failedTitle".loc, isPresented: $isShowingFailure, presenting: failure) { _ in
+            .alert("ryc0.wallpaper.failedTitle".loc, isPresented: $isShowingFailure, presenting: failure) { _ in
                 Button("lc.common.ok".loc) { }
             } message: { failure in
                 Text(failure)

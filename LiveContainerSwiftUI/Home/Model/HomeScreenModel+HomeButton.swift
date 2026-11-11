@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// The Home button, zContainer's stand-in for the iPhone's: what pressing it
+/// The Home button, ryC0's stand-in for the iPhone's: what pressing it
 /// does, and when the Home Screen shows it. Screens opened over the Home
 /// Screen and search show it too, each in its own place.
 extension HomeScreenModel {

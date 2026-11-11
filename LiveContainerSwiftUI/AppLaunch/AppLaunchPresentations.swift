@@ -45,10 +45,9 @@ struct AppLaunchPresentations: ViewModifier {
                     installReplacePrompt.answer(nil)
                 }
             } message: {
-                // An update from Zeus offers only the copies it can replace.
                 Text(coordinator.installOptions.contains(where: { !$0.isReplace })
                      ? "lc.appList.installReplaceTip".loc
-                     : "zc.update.pickCopyTip".loc)
+                     : "ryc0.update.pickCopyTip".loc)
             }
             .alert(coordinator.updateConfirmation?.title ?? "", isPresented: $updatePrompt.isPresented,
                    presenting: coordinator.updateConfirmation) { confirmation in

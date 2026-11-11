@@ -38,15 +38,15 @@ struct OnboardingPendingInstallRow: View {
     private var status: String {
         switch item.state {
         case .downloading:
-            "zc.onboarding.apps.downloading".loc
+            "ryc0.onboarding.apps.downloading".loc
         case .waiting:
-            "zc.onboarding.apps.waiting".loc
+            "ryc0.onboarding.apps.waiting".loc
         case .installing:
-            "zc.home.installing".loc
+            "ryc0.home.installing".loc
         case .installed:
-            "zc.onboarding.apps.installed".loc
+            "ryc0.onboarding.apps.installed".loc
         case .notInstalled:
-            "zc.onboarding.apps.notInstalled".loc
+            "ryc0.onboarding.apps.notInstalled".loc
         case .failed(let reason):
             reason
         }

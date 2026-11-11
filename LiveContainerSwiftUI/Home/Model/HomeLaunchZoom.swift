@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// An app zooming open from its icon, just before zContainer turns into it.
+/// An app zooming open from its icon, just before ryC0 turns into it.
 struct HomeLaunchZoom: Identifiable, Equatable {
     /// The icon the app opens from.
     let item: HomeItem

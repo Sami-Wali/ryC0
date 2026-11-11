@@ -66,13 +66,16 @@ struct AppSceneViewSwiftUI: UIViewControllerRepresentable {
     let dataUUID: String
     let initSize: CGSize
     let onAppInitialize: (Int32, Error?) -> Void
+    let onReturnHome: () -> Void
     
     class Coordinator: NSObject, AppSceneViewControllerDelegate {
         let onExit: () -> Void
+        let onReturnHome: () -> Void
         let onAppInitialize: (Int32, Error?) -> Void
-        init(onAppInitialize: @escaping (Int32, Error?) -> Void, onExit: @escaping () -> Void) {
+        init(onAppInitialize: @escaping (Int32, Error?) -> Void, onReturnHome: @escaping () -> Void, onExit: @escaping () -> Void) {
             self.onAppInitialize = onAppInitialize
             self.onExit = onExit
+            self.onReturnHome = onReturnHome
         }
         
         func appSceneVCAppDidExit(_: AppSceneViewController!) {
@@ -86,6 +89,11 @@ struct AppSceneViewSwiftUI: UIViewControllerRepresentable {
             onAppInitialize(vc.pid, error)
         }
         
+        func appSceneVCRequestedHome(_ vc: AppSceneViewController!) {
+            guard vc.viewIfLoaded?.window?.windowScene?.activationState == .foregroundActive else { return }
+            onReturnHome()
+        }
+
         func appSceneVCWillActivateScene(_ vc: AppSceneViewController!) {
             vc.updateSettings { settings in
                 guard let settings else { return }
@@ -117,13 +125,16 @@ struct AppSceneViewSwiftUI: UIViewControllerRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator(onAppInitialize: onAppInitialize, onExit: {
+        Coordinator(onAppInitialize: onAppInitialize, onReturnHome: onReturnHome, onExit: {
             show = false
         })
     }
     
     func makeUIViewController(context: Context) -> UIViewController {
-        return AppSceneViewController(bundleId: bundleId, dataUUID: dataUUID, delegate: context.coordinator)
+        guard let controller = AppSceneViewController(bundleId: bundleId, dataUUID: dataUUID, delegate: context.coordinator) else {
+            return UIViewController()
+        }
+        return controller
     }
     
     func updateUIViewController(_ vc: UIViewController, context _: Context) {
@@ -159,24 +170,42 @@ struct MultitaskAppWindow: View {
         let isVirtualWindowMode = multitaskMode == .virtualWindow
         Group {
             if show, let appInfo {
-                GeometryReader { geometry in
-                    AppSceneViewSwiftUI(show: $show, bundleId: appInfo.bundleId, dataUUID: appInfo.dataUUID, initSize: geometry.size,
-                                        onAppInitialize: { pid, error in
-                        DispatchQueue.main.async {
-                            if error == nil {
-                                self.pid = Int(pid)
-                            } else {
-                                self.errorMessage = error?.localizedDescription
+                ZStack(alignment: .topTrailing) {
+                    GeometryReader { geometry in
+                        AppSceneViewSwiftUI(show: $show, bundleId: appInfo.bundleId, dataUUID: appInfo.dataUUID, initSize: geometry.size,
+                                            onAppInitialize: { pid, error in
+                            DispatchQueue.main.async {
+                                if error == nil {
+                                    self.pid = Int(pid)
+                                } else {
+                                    self.errorMessage = error?.localizedDescription
+                                }
+                                DataManager.shared.model.pidCallback?(NSNumber(value: pid), error)
+                                DataManager.shared.model.pidCallback = nil
                             }
-                            DataManager.shared.model.pidCallback?(NSNumber(value: pid), error)
-                            DataManager.shared.model.pidCallback = nil
+                        }, onReturnHome: {
+                            returnToLibrary(openingSwitcher: false)
+                        })
+                        .background(.black)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .ignoresSafeArea(.all, edges: .all)
+                    .navigationTitle(Text("\(appInfo.displayName) - \(String(pid))"))
+                    Menu {
+                        Button("ryc0.switcher.home".loc, systemImage: "house") {
+                            returnToLibrary(openingSwitcher: false)
                         }
-                    })
-                    .background(.black)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        Button("ryc0.switcher.title".loc, systemImage: "rectangle.stack") {
+                            returnToLibrary(openingSwitcher: true)
+                        }
+                    } label: {
+                        Image(systemName: "rectangle.stack")
+                            .frame(width: 44, height: 44)
+                            .background(.regularMaterial, in: Circle())
+                    }
+                    .accessibilityLabel("ryc0.switcher.controls".loc)
+                    .padding(8)
                 }
-                .ignoresSafeArea(.all, edges: .all)
-                .navigationTitle(Text("\(appInfo.displayName) - \(String(pid))"))
                 
             } else if skipTerminatedScreen && isVirtualWindowMode, appInfo != nil {
                 Color.clear
@@ -242,6 +271,16 @@ struct MultitaskAppWindow: View {
         }
     }
     
+    private func returnToLibrary(openingSwitcher: Bool) {
+        if let session = MainWindow.scene?.session {
+            MainWindow.showHome(openingSwitcher: openingSwitcher)
+            UIApplication.shared.requestSceneSessionActivation(session, userActivity: nil, options: nil)
+        } else {
+            LCSharedUtils.setAppSwitcherRequested(openingSwitcher)
+            openWindow(id: "Main")
+        }
+    }
+
     private func requestSceneDestruction(isManual: Bool = false) {
         if isManual {
             didRequestManualClose = true

@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+@MainActor
 public final class DownloadHelper : ObservableObject {
     @Published var downloadProgress : Float = 0.0
     @Published var downloadedSize : Int64 = 0
@@ -14,83 +15,72 @@ public final class DownloadHelper : ObservableObject {
     @Published var isDownloading = false
     @Published var cancelled = false
     private var downloadTask: URLSessionDownloadTask?
-    private var continuation: UnsafeContinuation<(), Never>?
+    private var continuation: CheckedContinuation<Void, Error>?
     /// The session of the download under way. A session keeps its delegate,
     /// and with it this helper, until it is invalidated.
     private var session: URLSession?
 
     func download(url: URL, to: URL) async throws {
-        var ansError: Error? = nil
+        guard !isDownloading else { throw URLError(.resourceUnavailable) }
+        try Task.checkCancellation()
+        cancelled = false
+        downloadProgress = 0
+        downloadedSize = 0
+        totalSize = 0
+        isDownloading = true
 
-        await MainActor.run {
-            cancelled = false
-            
-            downloadProgress = 0.0
-            downloadedSize = 0
-            totalSize = 0
-            
-            isDownloading = true
-        }
-        
-        await withUnsafeContinuation { c in
-            continuation = c
-            
-            let bgConfig = URLSessionConfiguration.background(withIdentifier: "com.livecontainer.download.\(UUID().uuidString)")
-            let session = URLSession(configuration: bgConfig, delegate: DownloadDelegate(progressCallback: { progress, downloaded, total in
-                Task{ await MainActor.run {
+        try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { c in
+                continuation = c
+                // The owning queue outlives every screen. A foreground session
+                // avoids abandoned background sessions after a classic guest
+                // replaces the host process; durable queued jobs restart on return.
+                let config = URLSessionConfiguration.default
+                config.httpMaximumConnectionsPerHost = 8
+                config.waitsForConnectivity = true
+                config.timeoutIntervalForResource = 24 * 60 * 60
+                let session = URLSession(configuration: config, delegate: DownloadDelegate(progressCallback: { progress, downloaded, total in
+                    MainActor.assumeIsolated {
                     self.downloadProgress = progress
                     self.downloadedSize = downloaded
                     self.totalSize = total
-                }}
-            }, completeCallback: {endedSession, tempFileURL, error in
-                // Cancel already ended this download, or it already ended.
-                guard endedSession === self.session else {
-                    return
-                }
-                Task{ await MainActor.run {
-                    self.isDownloading = false
-                }}
-                if let error {
-                    print(error)
-                    ansError = error
-                }
-                if let tempFileURL {
-                    do {
-                        let fm = FileManager.default
-                        print(to)
-                        try fm.moveItem(at: tempFileURL, to: to)
-                    } catch {
-                        ansError = error
                     }
-                }
-                self.session = nil
-                self.continuation = nil
-                c.resume()
-
-            }), delegateQueue: .main)
-
-            self.session = session
-            downloadTask = session.downloadTask(with: url)
-            downloadTask?.resume()
-            // Lets the task finish and deliver its delegate calls, then
-            // releases the delegate.
-            session.finishTasksAndInvalidate()
-        }
-        if let ansError {
-            throw ansError
+                }, completeCallback: { endedSession, tempFileURL, error in
+                    // Delegate callbacks run on .main, so completion and cancel
+                    // cannot race or resume the continuation twice.
+                    MainActor.assumeIsolated {
+                        guard endedSession === self.session, let continuation = self.continuation else { return }
+                        self.continuation = nil
+                        self.session = nil
+                        self.downloadTask = nil
+                        self.isDownloading = false
+                        do {
+                            if let error { throw error }
+                            guard let tempFileURL else { throw URLError(.zeroByteResource) }
+                            try FileManager.default.moveItem(at: tempFileURL, to: to)
+                            continuation.resume()
+                        } catch { continuation.resume(throwing: error) }
+                    }
+                }), delegateQueue: .main)
+                self.session = session
+                downloadTask = session.downloadTask(with: url)
+                downloadTask?.resume()
+                session.finishTasksAndInvalidate()
+            }
+        } onCancel: {
+            Task { @MainActor in self.cancel() }
         }
     }
     
     func cancel() {
-        if let continuation {
-            continuation.resume()
-        }
         cancelled = true
+        let pending = continuation
         continuation = nil
         downloadTask?.cancel()
         session?.invalidateAndCancel()
         session = nil
         isDownloading = false
+        pending?.resume(throwing: CancellationError())
     }
 }
 
@@ -171,7 +161,7 @@ class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
-        let progress = Float(totalBytesWritten) / Float(totalBytesExpectedToWrite)
+        let progress = totalBytesExpectedToWrite > 0 ? min(1, Float(totalBytesWritten) / Float(totalBytesExpectedToWrite)) : 0
         progressCallback(progress, totalBytesWritten, totalBytesExpectedToWrite)
     }
 
@@ -183,10 +173,10 @@ class DownloadDelegate: NSObject, URLSessionDownloadDelegate {
             if (200...299).contains(statusCode) {
                 completeCallback(session, location, nil)
             } else {
-                completeCallback(session, location, NSError(domain: "", code: statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP Error: \(statusCode)"]))
+                completeCallback(session, nil, NSError(domain: "", code: statusCode, userInfo: [NSLocalizedDescriptionKey: "HTTP Error: \(statusCode)"]))
             }
         } else {
-            completeCallback(session, location, NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
+            completeCallback(session, nil, NSError(domain: "", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
         }
         
 

@@ -5,14 +5,7 @@
 
 import Foundation
 
-/// The tool that enables JIT for apps that need it, which Settings > Advanced
-/// > JIT chooses: Zeus unless another was chosen. The raw values are saved as
-/// LCJITEnablerType in the app group's defaults, so they never change.
 enum JITEnablerType: Int, CaseIterable, Identifiable {
-    /// Zeus, which starts zContainer with JIT through the iPhone's own
-    /// services, as it starts its own apps with JIT, with nothing else to
-    /// install.
-    case Zeus = 7
     case SideJITServer = 0
     case StikJIT = 1
     case JITStreamerEBLegacy = 2
@@ -24,13 +17,12 @@ enum JITEnablerType: Int, CaseIterable, Identifiable {
         rawValue
     }
 
-    /// The tool set in Settings, or Zeus when none was chosen.
     static var current: JITEnablerType {
         let defaults = LCUtils.appGroupUserDefault
         guard defaults.object(forKey: storageKey) != nil else {
-            return .Zeus
+            return .StikJIT
         }
-        return JITEnablerType(rawValue: defaults.integer(forKey: storageKey)) ?? .Zeus
+        return JITEnablerType(rawValue: defaults.integer(forKey: storageKey)) ?? .StikJIT
     }
 
     /// The app group defaults key the choice is saved under.
@@ -39,17 +31,16 @@ enum JITEnablerType: Int, CaseIterable, Identifiable {
     /// The tool's name.
     var displayName: String {
         switch self {
-        case .Zeus: "Zeus"
         case .StikJIT: "StikDebug"
-        case .StikJITLC: "StikDebug (Another zContainer/Multitask)"
+        case .StikJITLC: "StikDebug (Another ryC0/Multitask)"
         case .StosDebug: "StosDebug"
-        case .StosDebugLC: "StosDebug (Another zContainer/Multitask)"
+        case .StosDebugLC: "StosDebug (Another ryC0/Multitask)"
         case .JITStreamerEBLegacy: "JitStreamer-EB (Relaunch)"
         case .SideJITServer: "SideJITServer/JITStreamer 2.0"
         }
     }
 
-    /// Whether zContainer reaches the tool at an address typed into Settings.
+    /// Whether ryC0 reaches the tool at an address typed into Settings.
     var needsServerAddress: Bool {
         self == .SideJITServer || self == .JITStreamerEBLegacy
     }

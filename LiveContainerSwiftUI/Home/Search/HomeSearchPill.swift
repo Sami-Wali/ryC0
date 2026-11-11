@@ -39,7 +39,7 @@ struct HomeSearchPill: View {
         }
         .buttonStyle(.plain)
         .animation(HomeDesign.modeChange, value: showsPageDots)
-        .accessibilityLabel("zc.home.search".loc)
-        .accessibilityValue("zc.home.pageIndicator %lld %lld".localizeWithFormat(currentPage + 1, pageCount))
+        .accessibilityLabel("ryc0.home.search".loc)
+        .accessibilityValue("ryc0.home.pageIndicator %lld %lld".localizeWithFormat(currentPage + 1, pageCount))
     }
 }

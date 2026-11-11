@@ -1,8 +1,8 @@
 #import "LCHomeButtonPlacement.h"
 #import "../../LiveContainer/utils.h"
 
-// Where the place is saved, in zContainer's own defaults.
-static NSString * const LCHomeButtonPlacementKey = @"ZCHomeButtonPlacement";
+// Where the place is saved, in ryC0's own defaults.
+static NSString * const LCHomeButtonPlacementKey = @"RYC0HomeButtonPlacement";
 // How many times closer to the top or bottom than to a side a point must be
 // for the button to rest against the top or bottom.
 static const CGFloat LCHomeButtonSidePreference = 3;

@@ -8,6 +8,9 @@
 #import <dlfcn.h>
 #import <UIKit/UIKit.h>
 #import <mach-o/dyld.h>
+#import <notify.h>
+#import <objc/message.h>
+#import "../LiveContainer/LCSharedUtils.h"
 #import "../LiveContainer/utils.h"
 #import "../LiveContainer/Tweaks/Tweaks.h"
 
@@ -34,6 +37,67 @@ static NSDictionary *retrievedAppInfo;
 
 extern int LiveContainerMain(int argc, char *argv[]);
 static char **_envp, **_apple = NULL;
+
+static void NotifyHostAfterFirstGuestFrame(NSString *requestID) {
+    if (!requestID) return;
+    NSString *channel = [NSString stringWithFormat:@"com.ry0.ryC0.preview.%@.firstFrame", requestID];
+    NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
+    __block id observer = [center addObserverForName:UIWindowDidBecomeKeyNotification object:nil
+                                              queue:nil usingBlock:^(NSNotification *note) {
+        UIWindow *window = note.object;
+        if (!window.windowScene || window.hidden || window.windowLevel != UIWindowLevelNormal) return;
+        [center removeObserver:observer];
+        observer = nil;
+        // Let the guest commit its first frame before the host zooms it open.
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 50 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+            notify_post(channel.UTF8String);
+        });
+    }];
+}
+
+static void ListenForGuestPreviews(NSString *requestID) {
+    if (!requestID) return;
+    NSURL *file = [LCSharedUtils guestPreviewTransferURL:requestID];
+    if (!file) return;
+    NSString *channel = [@"com.ry0.ryC0.preview." stringByAppendingString:requestID];
+    dispatch_queue_t writes = dispatch_queue_create("com.ry0.ryC0.guest-preview", DISPATCH_QUEUE_SERIAL);
+    int token;
+    notify_register_dispatch(channel.UTF8String, &token, dispatch_get_main_queue(), ^(int notification) {
+        // The extension runs the guest's UIApplication entry point by now.
+        UIApplication *application = ((id (*)(id, SEL))objc_msgSend)(UIApplication.class, NSSelectorFromString(@"sharedApplication"));
+        UIWindow *window = nil;
+        for (UIScene *scene in application.connectedScenes) {
+            if ([scene isKindOfClass:UIWindowScene.class]) {
+                for (UIWindow *candidate in ((UIWindowScene *)scene).windows) {
+                    if (candidate.isKeyWindow && !candidate.hidden) { window = candidate; break; }
+                }
+                if (window) break;
+            }
+        }
+        if (!window || CGRectIsEmpty(window.bounds)) return;
+        UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
+        CGFloat longestSide = MAX(CGRectGetWidth(window.bounds), CGRectGetHeight(window.bounds));
+        // Render near the card's display size, with a pixel cap for large iPad windows.
+        format.scale = MIN(0.69 * MAX(1, window.traitCollection.displayScale), 2048.0 / longestSide);
+        format.preferredRange = UIGraphicsImageRendererFormatRangeStandard;
+        format.opaque = YES;
+        UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithBounds:window.bounds format:format];
+        __block BOOL drawn = NO;
+        UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+            drawn = [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:NO];
+        }];
+        if (!drawn) return;
+        dispatch_async(writes, ^{
+            [NSFileManager.defaultManager createDirectoryAtURL:file.URLByDeletingLastPathComponent
+                withIntermediateDirectories:YES attributes:nil error:nil];
+            if ([UIImageJPEGRepresentation(image, 0.94) writeToURL:file
+                options:NSDataWritingAtomic | NSDataWritingFileProtectionComplete error:nil]) {
+                notify_post([channel stringByAppendingString:@".ready"].UTF8String);
+            }
+        });
+    });
+}
+
 int LiveProcessMain(int argc, char *argv[]) {
     // Let NSExtensionContext initialize, once it's done it will call CFRunLoopStop
     CFRunLoopRun();
@@ -53,7 +117,7 @@ int LiveProcessMain(int argc, char *argv[]) {
         return payloadEntry(argc, argv, _envp, _apple);
     }
     
-    NSLog(@"Retrieved app info: %@", appInfo);
+    NSLog(@"Retrieved app info for %@", appInfo[@"selected"]);
     // Set LiveContainer's home path
     setenv("LP_HOME_PATH", getenv("HOME"), 1);
     const char *overrideHomePath = [appInfo[@"lcHomePath"] fileSystemRepresentation];
@@ -73,7 +137,23 @@ int LiveProcessMain(int argc, char *argv[]) {
         bookmarkedUrls[i] = [NSURL URLByResolvingBookmarkData:bookmarks[i] options:0 relativeToURL:nil bookmarkDataIsStale:&isStale error:&error];
         [bookmarkedUrls[i] startAccessingSecurityScopedResource];
     }
+    NSData *systemNotificationsBookmark = appInfo[@"systemNotificationsBookmark"];
+    if (systemNotificationsBookmark) {
+        NSURL *directory = [NSURL URLByResolvingBookmarkData:systemNotificationsBookmark options:0 relativeToURL:nil
+                                       bookmarkDataIsStale:nil error:nil];
+        if ([directory startAccessingSecurityScopedResource]) {
+            [LCSharedUtils setGuestSystemNotificationDirectory:directory];
+        }
+    }
 
+    NSString *homeSwipeToken = appInfo[@"ryGuestHomeSwipeToken"];
+    if ([homeSwipeToken isKindOfClass:NSString.class] && [[NSUUID alloc] initWithUUIDString:homeSwipeToken]) {
+        setenv(LC_HOME_SWIPE_TOKEN_ENV, homeSwipeToken.UTF8String, 1);
+    }
+    ListenForGuestPreviews(appInfo[@"ryGuestPreviewToken"]);
+    if (@available(iOS 18.0, *)) {
+        NotifyHostAfterFirstGuestFrame(appInfo[@"ryGuestPreviewToken"]);
+    }
     return LiveContainerMain(argc, argv);
 }
 

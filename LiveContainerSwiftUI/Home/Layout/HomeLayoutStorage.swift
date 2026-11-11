@@ -7,17 +7,17 @@ import Foundation
 
 /// Saves the Home Screen layout as JSON in the app group's defaults, along
 /// with the page to come back to after an app. Without an app group they fall
-/// back to the "Unknown" suite in zContainer's own preferences, and
-/// LCSharedUtils copies the layout into the group once zContainer has one.
+/// back to the "Unknown" suite in ryC0's own preferences, and
+/// LCSharedUtils copies the layout into the group once ryC0 has one.
 enum HomeLayoutStorage {
     /// The defaults key the layout is saved under.
     private static var layoutKey: String {
-        forThisCopy("ZCHomeScreenLayout")
+        forThisCopy("RYC0HomeScreenLayout")
     }
-    /// The page an app was opened from. zContainer quits on the way into the
+    /// The page an app was opened from. ryC0 quits on the way into the
     /// app, so its state can't be restored any other way.
     private static var returnPageKey: String {
-        forThisCopy("ZCHomeScreenPage")
+        forThisCopy("RYC0HomeScreenPage")
     }
     /// LiveContainer's custom app order, which the share extension still reads
     /// to list the apps.
@@ -30,14 +30,14 @@ enum HomeLayoutStorage {
         LCUtils.appGroupUserDefault
     }
 
-    /// Whether this is a second zContainer, which shares the app group with
+    /// Whether this is a second ryC0, which shares the app group with
     /// the first but not the apps each keeps to itself, so it keeps its own
     /// layout, rather than one that leaves out the first one's apps.
     private static var isSecondCopy: Bool {
         DataManager.shared.model.multiLCStatus == 2
     }
 
-    /// `key` for this copy of zContainer: as it is for the first, and with the
+    /// `key` for this copy of ryC0: as it is for the first, and with the
     /// copy's URL scheme after it for a second.
     private static func forThisCopy(_ key: String) -> String {
         isSecondCopy ? "\(key).\(LCUtils.appUrlScheme() ?? "second")" : key
@@ -45,10 +45,10 @@ enum HomeLayoutStorage {
 
     /// The saved layout, or nil on the first launch or when it can't be read.
     static func load() -> HomeLayout? {
-        // A second zContainer saved under the shared key before it had its
+        // A second ryC0 saved under the shared key before it had its
         // own, so it starts from that, folders and all, until it saves.
         let saved = defaults.data(forKey: layoutKey)
-            ?? (isSecondCopy ? defaults.data(forKey: "ZCHomeScreenLayout") : nil)
+            ?? (isSecondCopy ? defaults.data(forKey: "RYC0HomeScreenLayout") : nil)
         guard let data = saved else {
             return nil
         }
@@ -62,7 +62,7 @@ enum HomeLayoutStorage {
             return
         }
         defaults.set(data, forKey: layoutKey)
-        // The share extension lists the first zContainer's apps.
+        // The share extension lists the first ryC0's apps.
         guard !isSecondCopy else {
             return
         }
@@ -70,7 +70,7 @@ enum HomeLayoutStorage {
         defaults.set("custom", forKey: sortTypeKey)
     }
 
-    /// Saves the page an app is opened from, for when zContainer comes back.
+    /// Saves the page an app is opened from, for when ryC0 comes back.
     static func saveReturnPage(_ page: Int) {
         defaults.set(page, forKey: returnPageKey)
     }
@@ -82,6 +82,14 @@ enum HomeLayoutStorage {
         let page = defaults.integer(forKey: returnPageKey)
         defaults.removeObject(forKey: returnPageKey)
         return max(page, 0)
+    }
+
+    static func loadDockPage() -> Int {
+        max(0, defaults.integer(forKey: forThisCopy("RYC0DockPage")))
+    }
+
+    static func saveDockPage(_ page: Int) {
+        defaults.set(page, forKey: forThisCopy("RYC0DockPage"))
     }
 
     /// The custom order LiveContainer's app list saved, which a first launch

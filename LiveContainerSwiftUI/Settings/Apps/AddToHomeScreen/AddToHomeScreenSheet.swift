@@ -8,7 +8,7 @@ import SwiftUI
 /// Add to Home Screen's sheet: first how the icon opens the app, then, once
 /// the person taps Add, Safari offering the web clip's profile, in the same
 /// sheet. iOS has the person allow the download and install the profile in
-/// Settings, so once Safari shows, the sheet closes when zContainer goes to
+/// Settings, so once Safari shows, the sheet closes when ryC0 goes to
 /// the background, as it does on the way there, and isn't left open for the
 /// person's return.
 struct AddToHomeScreenSheet: View {

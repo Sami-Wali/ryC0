@@ -5,14 +5,17 @@
 
 import Foundation
 
-/// Where a URL zContainer was opened with goes. HomeRouter reads it with
+/// Where a URL ryC0 was opened with goes. HomeRouter reads it with
 /// `init(url:)` and sends it on; the root view can also follow it, for example
 /// by showing the screen it concerns.
 enum HomeRoute: Equatable {
-    /// Brings up zContainer's own screens and nothing else, as
+    /// Brings up ryC0's own screens and nothing else, as
     /// `livecontainer-launch?bundle-name=ui` asks, or an app link that names
     /// nothing to do.
     case home
+
+    /// Asks the user before scheduling a fixed local test notification for ryP0.
+    case ryP0NotificationTest
 
     /// Installs, launches or opens something in an app, which
     /// AppLaunchCoordinator does.
@@ -22,21 +25,15 @@ enum HomeRoute: Equatable {
     /// the person says to use it.
     case certificate(CertificateLink)
 
-    /// Stores the signing certificate in a .p12 (or .pfx) file zContainer was
+    /// Stores the signing certificate in a .p12 (or .pfx) file ryC0 was
     /// asked to open, once the person types its password and says to use it.
     case certificateFile(URL)
 
-    /// Takes what Zeus left in the app group the two apps share, from
-    /// `zeus-request?id=<UUID>&id=<UUID>`: apps to install or update, or
-    /// Zeus's certificate. The link only names the requests, by id; what they
-    /// send is read from the group.
-    case zeusRequests([UUID])
-
-    /// Reads the route from a URL zContainer was opened with, either a link
+    /// Reads the route from a URL ryC0 was opened with, either a link
     /// with its own scheme or a file it was asked to open. Returns nil for URLs
-    /// zContainer doesn't handle.
+    /// ryC0 doesn't handle.
     init?(url: URL) {
-        // Any other file zContainer is asked to open is taken for an IPA.
+        // Any other file ryC0 is asked to open is taken for an IPA.
         if url.isFileURL, Self.certificateFileExtensions.contains(url.pathExtension.lowercased()) {
             self = .certificateFile(url)
             return
@@ -46,6 +43,11 @@ enum HomeRoute: Equatable {
             return
         }
         switch url.host?.lowercased() {
+        case "ryp0-notification-test":
+            guard url.scheme?.lowercased() == LCSharedUtils.hostAppUrlScheme().lowercased(),
+                  url.user == nil, url.password == nil, url.port == nil,
+                  url.path.isEmpty, url.query == nil, url.fragment == nil else { return nil }
+            self = .ryP0NotificationTest
         case "livecontainer-launch", "install", "open-web-page", "open-url":
             self = .home
         case "certificate":
@@ -53,10 +55,6 @@ enum HomeRoute: Equatable {
                 return nil
             }
             self = .certificate(link)
-        case ZeusGroupLayout.linkHost:
-            // A link that names no request still brings up zContainer.
-            let ids = Self.requestIDs(in: url)
-            self = ids.isEmpty ? .home : .zeusRequests(ids)
         default:
             return nil
         }
@@ -65,21 +63,4 @@ enum HomeRoute: Equatable {
     /// The extensions of the PKCS #12 files a certificate comes in.
     private static let certificateFileExtensions: Set<String> = ["p12", "pfx"]
 
-    /// The requests a `zeus-request` link names: its `id` items that hold a
-    /// UUID, each once, in the order given, up to the 50 a link may name.
-    /// Other items, and ids that aren't UUIDs, are left out.
-    private static func requestIDs(in url: URL) -> [UUID] {
-        let queryItems = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
-        var ids: [UUID] = []
-        for item in queryItems where item.name == ZeusGroupLayout.linkIDItem {
-            guard let value = item.value, let id = UUID(uuidString: value), !ids.contains(id) else {
-                continue
-            }
-            ids.append(id)
-            if ids.count == ZeusGroupLayout.maxIDsPerLink {
-                break
-            }
-        }
-        return ids
-    }
 }

@@ -33,7 +33,7 @@ extension LCAppModel {
             sharedModel.appDataFolderNames.append(folderName)
         }
 
-        let name = "zc.home.containerName %lld".localizeWithFormat(uiContainers.count + 1)
+        let name = "ryc0.home.containerName %lld".localizeWithFormat(uiContainers.count + 1)
         let container = LCContainer(folderName: folderName, name: name, isShared: uiIsShared)
         uiContainers.append(container)
         if uiDefaultDataFolder == nil {

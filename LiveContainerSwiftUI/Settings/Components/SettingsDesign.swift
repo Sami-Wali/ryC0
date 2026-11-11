@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// The look of zContainer's Settings in one place, matched to the Settings
+/// The look of ryC0's Settings in one place, matched to the Settings
 /// app. Sizes are in points at the default text size; the views scale them
 /// with Dynamic Type.
 enum SettingsDesign {
@@ -25,19 +25,11 @@ enum SettingsDesign {
     /// logo stays sharp on a 3x screen.
     static let largestLogoSize = 60.0
 
-    // MARK: The Zeus card
 
-    /// The Zeus mark in the card at the top of Settings, as big as the Apple
-    /// Account's picture is in the Settings app.
     static let cardMarkSize = 60.0
-    /// The Zeus mark at the top of the Zeus page.
     static let headerMarkSize = 64.0
-    /// How much of the Zeus mark's tile the bolt takes up, top to bottom: 640
-    /// of the 1024 points on Zeus's app icon.
-    static let boltRatio = 0.625
-    /// The tile behind the bolt, as on Zeus's app icon: the pink zContainer's
-    /// own icon has too, fading from the top left corner to the bottom right.
-    static let zeusTile = LinearGradient(
+    static let signingGlyphRatio = 0.625
+    static let signingTile = LinearGradient(
         colors: [OnboardingDesign.markGradientStart, OnboardingDesign.markGradientEnd],
         startPoint: .topLeading,
         endPoint: .bottomTrailing
@@ -49,7 +41,6 @@ enum SettingsDesign {
     /// Extra space above and below the card's content, which makes the card
     /// taller than the rows under it, as the Apple Account card is.
     static let cardPadding = 4.0
-    /// Space between the parts of the Zeus page's header.
     static let headerSpacing = 8.0
 
     // MARK: Add to Home Screen

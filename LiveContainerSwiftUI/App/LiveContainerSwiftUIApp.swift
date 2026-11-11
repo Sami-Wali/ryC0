@@ -53,7 +53,7 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
             }
             if LCPath.lcGroupDocPath != LCPath.docPath {
                 try fm.createDirectory(at: LCPath.lcGroupBundlePath, withIntermediateDirectories: true)
-                // Only the primary zContainer installs shared apps, so only it
+                // Only the primary ryC0 installs shared apps, so only it
                 // cleans up after them: a secondary one starting while the
                 // primary replaces a shared app would delete its new copy.
                 if DataManager.shared.model.multiLCStatus != 2 {
@@ -136,7 +136,7 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
                 .environment(wallpaper)
                 .environment(systemAppearance)
         }
-        // zContainer shows one main window. On iPad, File > New Window and
+        // ryC0 shows one main window. On iPad, File > New Window and
         // Command-N would open a second one only for it to close again.
         .commands {
             CommandGroup(replacing: .newItem) { }
@@ -153,7 +153,7 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
     }
     
 
-    /// Moves the settings apps read as they run, saved in zContainer's own
+    /// Moves the settings apps read as they run, saved in ryC0's own
     /// defaults before 1.0 (5), into the app group, where apps in multitasking
     /// windows, which run in the LiveProcess extension, can read them too.
     private static func moveGuestSettingsToAppGroup() {

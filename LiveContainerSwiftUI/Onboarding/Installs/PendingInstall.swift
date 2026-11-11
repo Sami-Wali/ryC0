@@ -5,9 +5,6 @@
 
 import Foundation
 
-/// One app PendingInstallQueue is bringing in, from an install link, an IPA
-/// or Zeus, as Add Apps lists it. Each row watches its own app, so a
-/// download's progress only redraws that row.
 @MainActor
 @Observable
 final class PendingInstall: Identifiable {
@@ -22,44 +19,32 @@ final class PendingInstall: Identifiable {
     private(set) var state: PendingInstallState
     /// How much of the IPA has downloaded, from 0 to 1.
     private(set) var downloadProgress = 0.0
+    private(set) var downloadedBytes: Int64 = 0
+    private(set) var totalBytes: Int64 = 0
+    private(set) var isVerifying = false
+    private(set) var installWarning: String?
     /// The app, once installed.
     private(set) var app: LCAppModel?
 
     /// The IPA on this iPhone, once it's there.
     @ObservationIgnored private(set) var file: URL?
-    /// For an opened IPA, the bookmark that finds it again if zContainer
+    /// For an opened IPA, the bookmark that finds it again if ryC0
     /// closes before it's installed.
     let bookmark: Data?
-    /// For an app from Zeus, the request Zeus left in the app group: the app
-    /// Zeus says it sends, and the folder of the copy it replaces.
-    let zeusRequest: ZeusRequest?
 
-    /// - Parameters:
-    ///   - id: The app's id, which one brought back after zContainer closed
-    ///     keeps.
-    ///   - source: Where the app came from.
-    ///   - name: What to call it until it's installed, or nil for what the
-    ///     source calls it.
-    ///   - downloadedFile: A link's IPA, when it has downloaded already, or
-    ///     the checked copy of an app from Zeus, or nil when it's still to
-    ///     download or copy.
-    ///   - bookmark: For an opened IPA, the bookmark that finds it again.
-    ///   - zeusRequest: For an app from Zeus, the request Zeus left.
     init(
         id: UUID = UUID(),
         source: PendingInstallSource,
         name: String? = nil,
         downloadedFile: URL? = nil,
-        bookmark: Data? = nil,
-        zeusRequest: ZeusRequest? = nil
+        bookmark: Data? = nil
     ) {
         self.id = id
         self.source = source
         self.placeholderName = name ?? source.name
         self.bookmark = bookmark
-        self.zeusRequest = zeusRequest
         switch source {
-        case .link, .zeusRequest:
+        case .link:
             file = downloadedFile
             state = downloadedFile == nil ? .downloading : .waiting
             downloadProgress = downloadedFile == nil ? 0 : 1
@@ -77,8 +62,15 @@ final class PendingInstall: Identifiable {
 
     /// Notes how much of the IPA has downloaded.
     func downloadProgressed(_ fraction: Double) {
-        downloadProgress = min(max(fraction, 0), 1)
+        downloadProgress = fraction.isFinite ? min(max(fraction, 0), 1) : 0
     }
+
+    func receivedBytes(_ count: Int64, total: Int64) {
+        downloadedBytes = max(0, count)
+        totalBytes = max(0, total)
+    }
+
+    func verifying(_ active: Bool) { isVerifying = active }
 
     /// Notes that the IPA has downloaded, or been copied and checked, to
     /// `file`, ready to install.
@@ -95,8 +87,9 @@ final class PendingInstall: Identifiable {
 
     /// Notes how the install ended: with the app it added, or nil when it
     /// added none.
-    func finishInstalling(adding app: LCAppModel?) {
+    func finishInstalling(adding app: LCAppModel?, warning: String? = nil) {
         self.app = app
+        installWarning = warning
         state = app == nil ? .notInstalled : .installed
     }
 

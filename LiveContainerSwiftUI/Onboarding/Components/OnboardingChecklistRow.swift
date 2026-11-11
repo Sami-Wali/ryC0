@@ -42,7 +42,7 @@ struct OnboardingChecklistRow<Detail: View, Accessory: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .accessibilityElement(children: .combine)
-            .accessibilityValue(isDone ? Text("zc.onboarding.doneValue".loc) : Text(verbatim: ""))
+            .accessibilityValue(isDone ? Text("ryc0.onboarding.doneValue".loc) : Text(verbatim: ""))
 
             if !isDone {
                 accessory

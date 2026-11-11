@@ -5,17 +5,12 @@
 
 import SwiftUI
 
-/// The look and timing of onboarding in one place, matched to Zeus's own
-/// onboarding. Sizes are in points at the default text size; the views scale
-/// the ones that sit beside text with Dynamic Type.
 enum OnboardingDesign {
     // MARK: Colors
 
-    /// zContainer's pink, from its icon, which tints onboarding the way
-    /// Zeus's pink tints Zeus's.
     static let accent = Color(red: 0xDB / 255, green: 0x2C / 255, blue: 0x99 / 255)
-    /// The pink gradient behind the apps on zContainer's icon, from its top
-    /// left corner to its bottom right, as `Scripts/zc/art/AppIcon.svg` has it.
+    /// The pink gradient behind the apps on ryC0's icon, from its top
+    /// left corner to its bottom right, as `Scripts/ryc0/art/AppIcon.svg` has it.
     static let markGradientStart = Color(red: 0xE6 / 255, green: 0x4B / 255, blue: 0xAE / 255)
     static let markGradientEnd = Color(red: 0xA3 / 255, green: 0x15 / 255, blue: 0x6F / 255)
     /// The page behind onboarding: the grouped background of its forms, so
@@ -43,7 +38,7 @@ enum OnboardingDesign {
 
     // MARK: The welcome screen
 
-    /// Space above zContainer's icon.
+    /// Space above ryC0's icon.
     static let welcomeTopPadding = 40.0
     /// Space under the features, above the footer.
     static let welcomeBottomPadding = 32.0
@@ -74,12 +69,12 @@ enum OnboardingDesign {
 
     // MARK: Icons
 
-    /// zContainer's icon on the welcome screen and at the end.
+    /// ryC0's icon on the welcome screen and at the end.
     static let markSize = 100.0
     /// The corner radius of a tile or an icon, as a fraction of its size: the
     /// shape of an app icon.
     static let iconCornerRatio = 0.225
-    /// The hairline around zContainer's icon, which keeps its edge crisp on a
+    /// The hairline around ryC0's icon, which keeps its edge crisp on a
     /// page of any color.
     static let markOutlineWidth = 1.0
     /// The squircle icons beside the features and the rows of a checklist.
@@ -90,7 +85,7 @@ enum OnboardingDesign {
     static let iconStrokeRatio = 0.055
     /// How strongly a squircle icon is filled until its step is done.
     static let iconFillOpacity = 0.15
-    /// The check that pops onto zContainer's icon at the end, the ring of
+    /// The check that pops onto ryC0's icon at the end, the ring of
     /// page color that cuts it out of the icon, and how far it hangs over the
     /// icon's corner.
     static let badgeSize = 34.0
@@ -118,7 +113,7 @@ enum OnboardingDesign {
     /// The gentle spring each part settles in with.
     static let revealSpring = Animation.spring(duration: 0.6, bounce: 0.12)
 
-    /// How zContainer's icon arrives on the welcome screen: its pink tile
+    /// How ryC0's icon arrives on the welcome screen: its pink tile
     /// swells in after a beat, then its sixteen apps pop onto it one diagonal
     /// at a time from the top left, `markAppStagger` seconds apart.
     static let markTileArrival = Animation.spring(duration: 0.5, bounce: 0.2).delay(0.25)

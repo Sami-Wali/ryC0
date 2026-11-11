@@ -35,7 +35,7 @@ body:
       options:
         - label: I downloaded LiveContainer from releases / actions section.
         - label: I have the latest LiveContainer.
-        - label: I installed LiveContainer through Zeus/Impactor/iloader/TrollStore or I'm confident that I signed LiveContainer correctly with all required entitlements.
+        - label: I installed LiveContainer through Impactor/iloader/TrollStore or I'm confident that I signed LiveContainer correctly with all required entitlements.
         - label: I have tried to sideload the app normally through **free** sideloaders and I **did not** encounter the same problem
     validations:
       required: true

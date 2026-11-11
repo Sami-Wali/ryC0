@@ -28,7 +28,7 @@ struct OnboardingProgressButton: View {
                 } icon: {
                     ProgressView()
                 }
-                // In zContainer's pink on the clear glass, where the white
+                // In ryC0's pink on the clear glass, where the white
                 // title would vanish.
                 .foregroundStyle(OnboardingDesign.accent)
                 .tint(OnboardingDesign.accent)

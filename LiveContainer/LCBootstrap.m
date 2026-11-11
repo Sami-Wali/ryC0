@@ -1,7 +1,6 @@
 #import "FoundationPrivate.h"
 #import "LCMachOUtils.h"
 #import "LCSharedUtils.h"
-#import "LCZeusCertificate.h"
 #import "UIKitPrivate.h"
 #import "utils.h"
 
@@ -249,7 +248,7 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     if (!LCSharedUtils.certificatePassword) {
 #if !TARGET_OS_SIMULATOR
         if(@available(iOS 26.0 ,*))  {
-            return @"JIT-less mode is required since iOS 26, and it needs the certificate that signed this app. Install this app with Zeus and let it use Zeus's certificate, or import a certificate in Settings.";
+            return @"JIT-less mode is required since iOS 26, and it needs the certificate that signed this app. Import the .p12 certificate that signed ryC0 in Settings.";
         }
 #endif
         // First of all, let's check if we have JIT
@@ -257,7 +256,7 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
             usleep(1000*100);
         }
         if (!checkJITEnabled()) {
-            appError = @"JIT was not enabled. If you want to use zContainer without JIT, setup JITLess mode in settings.";
+            appError = @"JIT was not enabled. If you want to use ryC0 without JIT, setup JITLess mode in settings.";
             return appError;
         }
     }
@@ -639,8 +638,8 @@ int LiveContainerMain(int argc, char *argv[]) {
     lcSharedDefaults = [[NSUserDefaults alloc] initWithSuiteName: [LCSharedUtils appGroupID]];
     lcAppUrlScheme = NSBundle.mainBundle.infoDictionary[@"CFBundleURLTypes"][0][@"CFBundleURLSchemes"][0];
     lcAppGroupPath = [[NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:[NSClassFromString(@"LCSharedUtils") appGroupID]] path];
-    isLiveProcess = [lcAppUrlScheme isEqualToString:@"liveprocess"];
-    // Settings and the app groups of apps inside, kept before zContainer had its
+    isLiveProcess = [lcAppUrlScheme isEqualToString:@"ryc0.liveprocess"];
+    // Settings and the app groups of apps inside, kept before ryC0 had its
     // app group, move into the group before anything below, the UI or a guest app
     // reads them.
     if(!isLiveProcess) {
@@ -710,12 +709,6 @@ int LiveContainerMain(int argc, char *argv[]) {
         [lcUserDefaults removeObjectForKey:@"selectedContainer"];
     }
     
-    // Take in the certificate Zeus put inside this app, before the UI or a guest
-    // app looks for one. The extensions read it from the app group instead.
-    if(!isLiveProcess) {
-        [LCZeusCertificate moveCertificateOutOfStandardDefaults];
-        [LCZeusCertificate importIfNeeded];
-    }
 
     if(selectedApp && !selectedContainer) {
         selectedContainer = [LCSharedUtils findDefaultContainerWithBundleId:selectedApp];

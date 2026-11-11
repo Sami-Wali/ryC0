@@ -21,16 +21,16 @@ struct HomeIconMoveActions: ViewModifier {
         content.accessibilityActions {
             if model.isEditing {
                 if let before = model.accessibilityNeighbor(of: item, by: -1) {
-                    Button("zc.home.moveBefore %@".localizeWithFormat(model.title(of: before)), action: moveBefore)
+                    Button("ryc0.home.moveBefore %@".localizeWithFormat(model.title(of: before)), action: moveBefore)
                 }
                 if let after = model.accessibilityNeighbor(of: item, by: 1) {
-                    Button("zc.home.moveAfter %@".localizeWithFormat(model.title(of: after)), action: moveAfter)
+                    Button("ryc0.home.moveAfter %@".localizeWithFormat(model.title(of: after)), action: moveAfter)
                 }
                 if model.canMoveToDock(item) {
-                    Button("zc.home.moveToDock".loc, action: moveToDock)
+                    Button("ryc0.home.moveToDock".loc, action: moveToDock)
                 }
                 if model.canMoveOutOfDock(item) {
-                    Button("zc.home.moveOutOfDock".loc, action: moveOutOfDock)
+                    Button("ryc0.home.moveOutOfDock".loc, action: moveOutOfDock)
                 }
             }
         }

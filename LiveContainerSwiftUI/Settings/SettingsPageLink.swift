@@ -15,7 +15,7 @@ struct SettingsPageLink<Label: View>: View {
     @ViewBuilder let label: Label
 
     var body: some View {
-        // SharedModel.isPhone never changes while zContainer runs, so a row
+        // SharedModel.isPhone never changes while ryC0 runs, so a row
         // never switches between the two kinds of link.
         if SharedModel.isPhone {
             NavigationLink {

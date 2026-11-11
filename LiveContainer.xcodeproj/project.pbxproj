@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		525943300000000000000008 /* ActivityWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 525943300000000000000003; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		525943300000000000000005 /* ActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52594330000000000000000E; };
+		525943300000000000000006 /* GuestActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52594330000000000000000D; };
 		17413FBC2D9C0BAE00F3F928 /* LiveContainerSwiftUI.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 17413FB52D9C0BAE00F3F928 /* LiveContainerSwiftUI.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		174140902D9C0E8200F3F928 /* TweakLoader.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1741403A2D9C0D0000F3F928 /* TweakLoader.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		174140942D9C0E8200F3F928 /* ZSign.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 174140542D9C0D6D00F3F928 /* ZSign.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
@@ -24,7 +27,6 @@
 		E1292C052DCA3EF00065E12D /* LiveContainerShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1292BD62DCA3B660065E12D /* LiveContainerShared.framework */; };
 		E1292C072DCA434C0065E12D /* dyld_bypass_validation.m in Sources */ = {isa = PBXBuildFile; fileRef = 172CA8542D9D721700CF6989 /* dyld_bypass_validation.m */; };
 		E1292C082DCA434F0065E12D /* LCSharedUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = 172CA8572D9D721700CF6989 /* LCSharedUtils.m */; };
-		2EC0FFEE0000000000000003 /* LCZeusCertificate.m in Sources */ = {isa = PBXBuildFile; fileRef = 2EC0FFEE0000000000000002 /* LCZeusCertificate.m */; };
 		E1292C092DCA43510065E12D /* Localization.m in Sources */ = {isa = PBXBuildFile; fileRef = 172CA8592D9D721700CF6989 /* Localization.m */; };
 		E1292C0A2DCA43540065E12D /* utils.m in Sources */ = {isa = PBXBuildFile; fileRef = 172CA85E2D9D721700CF6989 /* utils.m */; };
 		E1292C0B2DCA43560065E12D /* LCBootstrap.m in Sources */ = {isa = PBXBuildFile; fileRef = 172CA85A2D9D721700CF6989 /* LCBootstrap.m */; };
@@ -35,6 +37,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		52594330000000000000000A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 17DCE9952C7067EC00731D42 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 525943300000000000000002;
+			remoteInfo = ActivityWidget;
+		};
 		174140F92D9C1EDA00F3F928 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 17DCE9952C7067EC00731D42 /* Project object */;
@@ -96,7 +105,7 @@
 /* Begin PBXCopyFilesBuildPhase section */
 		17413FC12D9C0BAE00F3F928 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 12;
+			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
@@ -138,6 +147,7 @@
 			files = (
 				17E23DE92F443A9300C55733 /* ShareExtension.appex in Embed Foundation Extensions */,
 				17CAED2C2F234814008B1977 /* LaunchAppExtension.appex in Embed Foundation Extensions */,
+				525943300000000000000008 /* ActivityWidget.appex in Embed Foundation Extensions */,
 				E1292AF32DCA3A660065E12D /* LiveProcess.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
@@ -146,13 +156,14 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		525943300000000000000003 /* ActivityWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ActivityWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		52594330000000000000000E /* ActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityWidget/ActivityWidget.swift; sourceTree = SOURCE_ROOT; };
+		52594330000000000000000D /* GuestActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveContainerSwiftUI/Activities/GuestActivityAttributes.swift; sourceTree = SOURCE_ROOT; };
 		172978E8302EAF07004A3E78 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		172CA8542D9D721700CF6989 /* dyld_bypass_validation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = dyld_bypass_validation.m; sourceTree = "<group>"; };
 		172CA8552D9D721700CF6989 /* FoundationPrivate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FoundationPrivate.h; sourceTree = "<group>"; };
 		172CA8562D9D721700CF6989 /* LCSharedUtils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LCSharedUtils.h; sourceTree = "<group>"; };
 		172CA8572D9D721700CF6989 /* LCSharedUtils.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LCSharedUtils.m; sourceTree = "<group>"; };
-		2EC0FFEE0000000000000001 /* LCZeusCertificate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LCZeusCertificate.h; sourceTree = "<group>"; };
-		2EC0FFEE0000000000000002 /* LCZeusCertificate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LCZeusCertificate.m; sourceTree = "<group>"; };
 		172CA8582D9D721700CF6989 /* Localization.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Localization.h; sourceTree = "<group>"; };
 		172CA8592D9D721700CF6989 /* Localization.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Localization.m; sourceTree = "<group>"; };
 		172CA85A2D9D721700CF6989 /* LCBootstrap.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LCBootstrap.m; sourceTree = "<group>"; };
@@ -189,6 +200,7 @@
 				Assets.xcassets,
 				DefaultIcon.png,
 				Localizable.xcstrings,
+				ryP0.ipa,
 				Settings.bundle,
 				universal.js,
 			);
@@ -399,8 +411,6 @@
 				E16D94DE2E1CC8200068EB63 /* LCMachOUtils.m */,
 				172CA8562D9D721700CF6989 /* LCSharedUtils.h */,
 				172CA8572D9D721700CF6989 /* LCSharedUtils.m */,
-				2EC0FFEE0000000000000001 /* LCZeusCertificate.h */,
-				2EC0FFEE0000000000000002 /* LCZeusCertificate.m */,
 				172CA8582D9D721700CF6989 /* Localization.h */,
 				172CA8592D9D721700CF6989 /* Localization.m */,
 				172CA85A2D9D721700CF6989 /* LCBootstrap.m */,
@@ -428,6 +438,8 @@
 			children = (
 				E16D9BA02E1D48DE0068EB63 /* README.md */,
 				17B0F8452DE16FE4008110EA /* xcconfigs */,
+				52594330000000000000000E /* ActivityWidget.swift */,
+				52594330000000000000000D /* GuestActivityAttributes.swift */,
 				E1292C242DCA4E6F0065E12D /* MultitaskSupport */,
 				172CA8992D9D72C300CF6989 /* Resources */,
 				172CA8652D9D723200CF6989 /* entitlements.xml */,
@@ -453,6 +465,7 @@
 				1741403A2D9C0D0000F3F928 /* TweakLoader.dylib */,
 				174140542D9C0D6D00F3F928 /* ZSign.dylib */,
 				174140AD2D9C0F4100F3F928 /* TestJITLess.dylib */,
+				525943300000000000000003 /* ActivityWidget.appex */,
 				E1292AE52DCA3A660065E12D /* LiveProcess.appex */,
 				E1292BD62DCA3B660065E12D /* LiveContainerShared.framework */,
 				17CAE6172F230449008B1977 /* LaunchAppExtension.appex */,
@@ -503,11 +516,23 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
+		525943300000000000000002 /* ActivityWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 525943300000000000000004;
+			buildPhases = (525943300000000000000007);
+			buildRules = ();
+			dependencies = ();
+			name = ActivityWidget;
+			productName = ActivityWidget;
+			productReference = 525943300000000000000003;
+			productType = "com.apple.product-type.app-extension";
+		};
 		17413FB42D9C0BAE00F3F928 /* LiveContainerSwiftUI */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 17413FBE2D9C0BAE00F3F928 /* Build configuration list for PBXNativeTarget "LiveContainerSwiftUI" */;
 			buildPhases = (
 				17413FB02D9C0BAE00F3F928 /* Headers */,
+				525943300000000000000001 /* Build archive path validator */,
 				17413FB12D9C0BAE00F3F928 /* Sources */,
 				17413FB22D9C0BAE00F3F928 /* Frameworks */,
 				17413FB32D9C0BAE00F3F928 /* Resources */,
@@ -630,6 +655,7 @@
 				174140FA2D9C1EDA00F3F928 /* PBXTargetDependency */,
 				174140FE2D9C1EDA00F3F928 /* PBXTargetDependency */,
 				174141002D9C1EDA00F3F928 /* PBXTargetDependency */,
+				525943300000000000000009 /* PBXTargetDependency */,
 				E1292AF22DCA3A660065E12D /* PBXTargetDependency */,
 				E1292BEA2DCA3B670065E12D /* PBXTargetDependency */,
 				17CAE61F2F230449008B1977 /* PBXTargetDependency */,
@@ -807,6 +833,7 @@
 				174140392D9C0D0000F3F928 /* TweakLoader */,
 				174140532D9C0D6D00F3F928 /* ZSign */,
 				174140AC2D9C0F4100F3F928 /* TestJITLess */,
+				525943300000000000000002 /* ActivityWidget */,
 				E1292AE42DCA3A660065E12D /* LiveProcess */,
 				E1292BD52DCA3B660065E12D /* LiveContainerShared */,
 				17CAE6162F230449008B1977 /* LaunchAppExtension */,
@@ -861,6 +888,18 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+        525943300000000000000001 /* Build archive path validator */ = {
+            isa = PBXShellScriptBuildPhase;
+            buildActionMask = 2147483647;
+            files = ();
+            inputPaths = ("$(SRCROOT)/Rust/archive_paths.rs", "$(SRCROOT)/Scripts/ryc0/build-archive-paths.sh");
+            name = "Build archive path validator";
+            outputPaths = ("$(DERIVED_FILE_DIR)/ryc0-archive-paths.o");
+            runOnlyForDeploymentPostprocessing = 0;
+            shellPath = /bin/bash;
+            shellScript = "platform=\"$PLATFORM_NAME\"\nif [[ \"$EFFECTIVE_PLATFORM_NAME\" == -maccatalyst ]]; then platform=maccatalyst; fi\n\"$SCRIPT_INPUT_FILE_1\" \"$SCRIPT_INPUT_FILE_0\" \"$SCRIPT_OUTPUT_FILE_0\" \"$platform\" $ARCHS\n";
+        };
+
 		17D4DA692D9C495E008E7396 /* Run Script */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -877,11 +916,17 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nINFO_PLIST=\"${TARGET_BUILD_DIR}\"/\"${INFOPLIST_PATH}\"\n\n# Get current Git branch and commit hash\nCONFIG_BRANCH=$(git rev-parse --abbrev-ref HEAD)\nCONFIG_COMMIT=$(git log -1 --format=%h)\n\n# Combine values into a version info string\nLCVersionInfo=\"$CONFIGURATION ($CONFIG_BRANCH/$CONFIG_COMMIT)\"\n\n/usr/libexec/PlistBuddy -c \"Add :LCVersionInfo string $LCVersionInfo\" \"${INFO_PLIST}\"\ncp -n -r \"$SRCROOT\"/Resources/*.lproj \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH\"\n\n# License texts the About page shows (LCLicense.swift), as Scripts/zc/assemble.py copies them\nLICENSES=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Licenses\"\nmkdir -p \"$LICENSES\"\ncp \"$SRCROOT\"/LICENSE \"$LICENSES\"/zContainer.txt\ncp \"$SRCROOT\"/OpenSSL/LICENSE.txt \"$LICENSES\"/OpenSSL.txt\ncp \"$SRCROOT\"/Resources/Frameworks/CydiaSubstrate.framework/LICENSE \"$LICENSES\"/ElleKit.txt\ncp \"$SRCROOT\"/litehook/LICENSE \"$LICENSES\"/litehook.txt\ncp \"$SRCROOT\"/Resources/Licenses/*.txt \"$LICENSES\"\necho 1\n";
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nINFO_PLIST=\"${TARGET_BUILD_DIR}\"/\"${INFOPLIST_PATH}\"\n\n# Get current Git branch and commit hash\nCONFIG_BRANCH=$(git rev-parse --abbrev-ref HEAD)\nCONFIG_COMMIT=$(git log -1 --format=%h)\n\n# Combine values into a version info string\nLCVersionInfo=\"$CONFIGURATION ($CONFIG_BRANCH/$CONFIG_COMMIT)\"\n\n/usr/libexec/PlistBuddy -c \"Add :LCVersionInfo string $LCVersionInfo\" \"${INFO_PLIST}\"\ncp -n -r \"$SRCROOT\"/Resources/*.lproj \"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH\"\n\n# License texts the About page shows (LCLicense.swift), as Scripts/ryc0/assemble.py copies them\nLICENSES=\"$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Licenses\"\nmkdir -p \"$LICENSES\"\ncp \"$SRCROOT\"/LICENSE \"$LICENSES\"/ryC0.txt\ncp \"$SRCROOT\"/OpenSSL/LICENSE.txt \"$LICENSES\"/OpenSSL.txt\ncp \"$SRCROOT\"/Resources/Frameworks/CydiaSubstrate.framework/LICENSE \"$LICENSES\"/ElleKit.txt\ncp \"$SRCROOT\"/litehook/LICENSE \"$LICENSES\"/litehook.txt\ncp \"$SRCROOT\"/Resources/Licenses/*.txt \"$LICENSES\"\necho 1\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		525943300000000000000007 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (525943300000000000000005, 525943300000000000000006);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		17413FB12D9C0BAE00F3F928 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -947,7 +992,6 @@
 				E1292C092DCA43510065E12D /* Localization.m in Sources */,
 				E16D95742E1CD2980068EB63 /* LCMachOUtils.m in Sources */,
 				E1292C082DCA434F0065E12D /* LCSharedUtils.m in Sources */,
-				2EC0FFEE0000000000000003 /* LCZeusCertificate.m in Sources */,
 				E1292C0B2DCA43560065E12D /* LCBootstrap.m in Sources */,
 				E1292C0A2DCA43540065E12D /* utils.m in Sources */,
 			);
@@ -956,6 +1000,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		525943300000000000000009 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 525943300000000000000002;
+			targetProxy = 52594330000000000000000A;
+		};
 		174140FA2D9C1EDA00F3F928 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 17413FB42D9C0BAE00F3F928 /* LiveContainerSwiftUI */;
@@ -999,6 +1048,48 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		52594330000000000000000B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 17B0F8452DE16FE4008110EA /* xcconfigs */;
+			baseConfigurationReferenceRelativePath = ActivityWidget.xcconfig;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ActivityWidget/ActivityWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 7;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ActivityWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../../Frameworks");
+				MARKETING_VERSION = 1.1;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		52594330000000000000000C /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 17B0F8452DE16FE4008110EA /* xcconfigs */;
+			baseConfigurationReferenceRelativePath = ActivityWidget.xcconfig;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ActivityWidget/ActivityWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 7;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ActivityWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.5;
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/../../Frameworks");
+				MARKETING_VERSION = 1.1;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		17413FBF2D9C0BAE00F3F928 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1011,6 +1102,7 @@
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				ENABLE_MODULE_VERIFIER = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
@@ -1028,8 +1120,8 @@
 					"-DCONFIG_BRANCH=\\\"$(CONFIG_BRANCH)\\\"",
 					"-DCONFIG_COMMIT=\\\"$(CONFIG_COMMIT)\\\"",
 				);
-				OTHER_LDFLAGS = "-Wl,-U,_OBJC_CLASS_$_RBSTarget";
-				PRODUCT_BUNDLE_IDENTIFIER = com.kdtLiveContainerSwiftUI;
+				OTHER_LDFLAGS = ("-Wl,-U,_OBJC_CLASS_$_RBSTarget", "$(DERIVED_FILE_DIR)/ryc0-archive-paths.o");
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LIVECONTAINER_BUNDLE_IDENTIFIER).LiveContainerSwiftUI";
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -1054,6 +1146,7 @@
 				DYLIB_CURRENT_VERSION = 1;
 				DYLIB_INSTALL_NAME_BASE = "@rpath";
 				ENABLE_MODULE_VERIFIER = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
@@ -1071,8 +1164,8 @@
 					"-DCONFIG_BRANCH=\\\"$(CONFIG_BRANCH)\\\"",
 					"-DCONFIG_COMMIT=\\\"$(CONFIG_COMMIT)\\\"",
 				);
-				OTHER_LDFLAGS = "-Wl,-U,_OBJC_CLASS_$_RBSTarget";
-				PRODUCT_BUNDLE_IDENTIFIER = com.kdtLiveContainerSwiftUI;
+				OTHER_LDFLAGS = ("-Wl,-U,_OBJC_CLASS_$_RBSTarget", "$(DERIVED_FILE_DIR)/ryc0-archive-paths.o");
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LIVECONTAINER_BUNDLE_IDENTIFIER).LiveContainerSwiftUI";
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
@@ -1434,7 +1527,7 @@
 				CODE_SIGN_IDENTITY = "$(inherited)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 7;
-				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
+				DEVELOPMENT_TEAM = DHD9M6P75C;
 				ENABLE_DEBUG_DYLIB = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1443,7 +1536,7 @@
 				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LiveContainer/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = LiveContainer;
+				INFOPLIST_KEY_CFBundleDisplayName = ryC0;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -1479,7 +1572,7 @@
 				CODE_SIGN_IDENTITY = "$(inherited)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 7;
-				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
+				DEVELOPMENT_TEAM = DHD9M6P75C;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Resources/Frameworks",
@@ -1487,7 +1580,7 @@
 				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = LiveContainer/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = LiveContainer;
+				INFOPLIST_KEY_CFBundleDisplayName = ryC0;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -1527,7 +1620,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = zContainer;
+				INFOPLIST_KEY_CFBundleDisplayName = ryC0;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1565,7 +1658,7 @@
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ShareExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = zContainer;
+				INFOPLIST_KEY_CFBundleDisplayName = ryC0;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1750,7 +1843,7 @@
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
 				OTHER_CFLAGS = "-fcommon";
 				OTHER_LDFLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = com.kdt.livecontainer.LiveContainerShared;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LIVECONTAINER_BUNDLE_IDENTIFIER).LiveContainerShared";
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
 				STRIP_STYLE = debugging;
@@ -1792,7 +1885,7 @@
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
 				OTHER_CFLAGS = "-fcommon";
 				OTHER_LDFLAGS = "";
-				PRODUCT_BUNDLE_IDENTIFIER = com.kdt.livecontainer.LiveContainerShared;
+				PRODUCT_BUNDLE_IDENTIFIER = "$(LIVECONTAINER_BUNDLE_IDENTIFIER).LiveContainerShared";
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
 				STRIP_STYLE = debugging;
@@ -1807,6 +1900,12 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		525943300000000000000004 /* ActivityWidget configurations */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (52594330000000000000000B, 52594330000000000000000C);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		17413FBE2D9C0BAE00F3F928 /* Build configuration list for PBXNativeTarget "LiveContainerSwiftUI" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

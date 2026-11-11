@@ -20,7 +20,7 @@ struct ReadableContentWidth: ViewModifier {
     @State private var width = 0.0
 
     func body(content: Content) -> some View {
-        // SharedModel.isPhone never changes while zContainer runs, so the
+        // SharedModel.isPhone never changes while ryC0 runs, so the
         // content never switches between the two and keeps its identity.
         if SharedModel.isPhone {
             content

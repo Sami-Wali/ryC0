@@ -5,7 +5,7 @@
 
 import Foundation
 
-/// Which versions of apps' icons zContainer shows, chosen in Settings > Home
+/// Which versions of apps' icons ryC0 shows, chosen in Settings > Home
 /// Screen: the dark ones while Dark Mode is on, as iOS does by default, or
 /// always the light or the dark ones.
 enum HomeIconStyle: String, CaseIterable, Identifiable {
@@ -14,7 +14,7 @@ enum HomeIconStyle: String, CaseIterable, Identifiable {
     case dark
 
     /// The defaults key the choice is saved under, in the app group's defaults.
-    static let storageKey = "ZCHomeIconStyle"
+    static let storageKey = "RYC0HomeIconStyle"
 
     var id: Self {
         self
@@ -24,11 +24,11 @@ enum HomeIconStyle: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .automatic:
-            "zc.settings.appearance.iconStyle.automatic".loc
+            "ryc0.settings.appearance.iconStyle.automatic".loc
         case .light:
-            "zc.settings.appearance.iconStyle.light".loc
+            "ryc0.settings.appearance.iconStyle.light".loc
         case .dark:
-            "zc.settings.appearance.iconStyle.dark".loc
+            "ryc0.settings.appearance.iconStyle.dark".loc
         }
     }
 

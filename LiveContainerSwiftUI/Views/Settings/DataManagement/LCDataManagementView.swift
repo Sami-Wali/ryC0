@@ -41,7 +41,7 @@ struct LCDataManagementView : View {
         _folderPaths = State(initialValue: [
             LCFolderPath(path: LCPath.docPath, desc: "Private Container"),
             LCFolderPath(path: LCPath.lcGroupDocPath, desc: "App Group Container"),
-            LCFolderPath(path: Bundle.main.bundleURL, desc: "zContainer Bundle"),
+            LCFolderPath(path: Bundle.main.bundleURL, desc: "ryC0 Bundle"),
         ])
     }
     
@@ -340,7 +340,7 @@ struct LCDataManagementView : View {
         defer { isCleaning = false }
 
         let allApps = sharedModel.apps + sharedModel.hiddenApps
-        // Every container's caches, then zContainer's own.
+        // Every container's caches, then ryC0's own.
         let cacheFolders = allApps.flatMap { app in
             app.uiContainers.map { container in
                 container.containerURL.appendingPathComponent("Library/Caches")
@@ -418,7 +418,7 @@ struct LCDataManagementView : View {
                 try fm.moveItem(at: LCPath.lcGroupDataPath.appendingPathComponent(sharedDataFolder), to: movedDataURL)
                 movedDataFolderCount += 1
                 // Added the way launch lists the data folders, so it shows
-                // before zContainer opens again.
+                // before ryC0 opens again.
                 var isDataDirectory : ObjCBool = false
                 if fm.fileExists(atPath: movedDataURL.path, isDirectory: &isDataDirectory), isDataDirectory.boolValue, !sharedModel.appDataFolderNames.contains(sharedDataFolder) {
                     sharedModel.appDataFolderNames.append(sharedDataFolder)

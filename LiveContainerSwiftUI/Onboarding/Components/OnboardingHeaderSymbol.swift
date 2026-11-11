@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// The symbol at the top of a step: white, on a tile of zContainer's pink in
+/// The symbol at the top of a step: white, on a tile of ryC0's pink in
 /// the shape of an app icon.
 struct OnboardingHeaderSymbol: View {
     let systemImage: String

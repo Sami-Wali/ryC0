@@ -23,7 +23,7 @@ struct HomeSearchField: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
-                TextField("zc.home.search".loc, text: $text)
+                TextField("ryc0.home.search".loc, text: $text)
                     .focused(isFocused)
                     .submitLabel(.go)
                     .onSubmit(onSubmit)
@@ -32,7 +32,7 @@ struct HomeSearchField: View {
                     .autocorrectionDisabled()
                 if !text.isEmpty {
                     Button(action: clear) {
-                        Label("zc.home.clearSearch".loc, systemImage: "xmark.circle.fill")
+                        Label("ryc0.home.clearSearch".loc, systemImage: "xmark.circle.fill")
                             .labelStyle(.iconOnly)
                             .foregroundStyle(.secondary)
                             .frame(minWidth: HomeDesign.minimumTouchSize, minHeight: HomeDesign.minimumTouchSize)

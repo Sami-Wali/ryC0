@@ -48,6 +48,6 @@ struct HomeIconContent: View {
     }
 
     private var zoomSource: HomeZoomSource {
-        HomeZoomSource(id: item.id, namespace: zoomNamespace)
+        HomeZoomSource(id: item.id, namespace: model.showsAppSwitcher ? nil : zoomNamespace)
     }
 }

@@ -20,9 +20,30 @@ struct HomePillRow: View {
     @GestureState private var isScrubbing = false
 
     var body: some View {
+        HStack(spacing: 8) {
+            Color.clear
+                .frame(width: 44, height: 1)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+            pill
+            Button {
+                model.showsAppSwitcher = true
+            } label: {
+                Image(systemName: "rectangle.stack")
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 44, height: 44)
+                    .background(.ultraThinMaterial, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("ryc0.switcher.title".loc)
+            .accessibilityIdentifier("ryc0.app-switcher")
+        }
+    }
+
+    private var pill: some View {
         let content = model.pillContent
 
-        ZStack {
+        return ZStack {
             if content == .homeButton {
                 HomeButton(action: model.goHome)
                     .scaleEffect(homeButtonScale)

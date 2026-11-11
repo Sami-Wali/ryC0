@@ -70,19 +70,19 @@ struct LCLicense: Identifiable, Sendable {
 }
 
 extension LCLicense {
-    /// zContainer's own license, which it keeps from LiveContainer: the LICENSE
+    /// ryC0's own license, which it keeps from LiveContainer: the LICENSE
     /// file at the root of the source.
-    static let zContainer = LCLicense(
-        name: "zContainer",
+    static let ryC0 = LCLicense(
+        name: "ryC0",
         licenseName: "GNU Affero General Public License v3.0",
-        fileName: "zContainer.txt",
+        fileName: "ryC0.txt",
         url: LCAboutLinks.license
     )
 
     /// The open source software inside the app, in the order of the
     /// acknowledgements. Each license asks for its text to come with every copy,
     /// so the build copies them into the app's Licenses folder: the Xcode
-    /// target's Run Script and Scripts/zc/assemble.py, from the projects' own
+    /// target's Run Script and Scripts/ryc0/assemble.py, from the projects' own
     /// LICENSE files, or from Resources/Licenses for those the source doesn't
     /// otherwise hold. Update the copy and its link along with the project.
     static let thirdParty = [

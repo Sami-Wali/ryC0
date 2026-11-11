@@ -39,6 +39,28 @@ final class HomeScreenModel {
 
     /// The page showing, as the paging scroll view reports it.
     var page: Int? = 0
+    var dockPage = 0
+
+    var dockPageCount: Int {
+        let lastIcon = max(layout.dock.count, displayedLayout.dock.count) - 1
+        let count = max(lastIcon + 1, 0)
+        if isEditing && layout.dock.count > 0 {
+            return HomeLayout.dockPage(for: count) + 1
+        }
+        return HomeLayout.dockPage(for: max(lastIcon, 0)) + 1
+    }
+
+    var visibleDockPage: Int {
+        min(dockPage, dockPageCount - 1)
+    }
+
+    func showDockPage(_ index: Int) {
+        guard drag == nil else { return }
+        withAnimation(HomeDesign.reflow) {
+            dockPage = min(max(index, 0), dockPageCount - 1)
+        }
+        HomeLayoutStorage.saveDockPage(visibleDockPage)
+    }
     /// The pages whose icons are built: the page showing and its neighbors,
     /// and while the pages move, every page they pass on the way. Pages
     /// further away have no views, so their icons don't load or jiggle.
@@ -116,6 +138,7 @@ final class HomeScreenModel {
     /// opens until it has closed. The status bar then follows that screen's
     /// appearance instead of the Home Screen's dark one.
     var isCoveredByScreen = false
+    var showsAppSwitcher = false
 
     /// The app the person asked to remove, while the question shows.
     var pendingRemoval: LCAppModel?
@@ -132,13 +155,13 @@ final class HomeScreenModel {
     /// menu, for AppShortcutPresenter to put there.
     var shortcutRequest: AppShortcutRequest?
 
-    /// The app zooming open from its icon, just before zContainer turns into it.
+    /// The app zooming open from its icon, just before ryC0 turns into it.
     var launchZoom: HomeLaunchZoom?
     @ObservationIgnored var launchZoomContinuation: CheckedContinuation<Void, Never>?
 
     /// Loads the saved layout, or makes the first one from LiveContainer's
     /// custom order or the install order, and brings it in line with the apps.
-    /// When zContainer comes back from an app, it opens on the page the app
+    /// When ryC0 comes back from an app, it opens on the page the app
     /// was opened from, as iOS does.
     init(coordinator: AppLaunchCoordinator) {
         self.coordinator = coordinator
@@ -154,6 +177,7 @@ final class HomeScreenModel {
         page = returnPage
         builtPages = (returnPage - 1)...(returnPage + 1)
         syncApps(apps)
+        dockPage = min(HomeLayoutStorage.loadDockPage(), dockPageCount - 1)
     }
 
     /// Reports every change to the list of apps the Home Screen shows. The
@@ -215,8 +239,8 @@ final class HomeScreenModel {
     var dockPlacements: [HomePlacement] {
         let shown = displayedLayout
         var placements: [HomePlacement] = []
-        for (index, item) in shown.dock.enumerated() where item != drag?.item {
-            placements.append(HomePlacement(item: item, slot: .dock(index), isLifted: false))
+        for index in shown.dockRange(on: visibleDockPage) where shown.dock[index] != drag?.item {
+            placements.append(HomePlacement(item: shown.dock[index], slot: .dock(index), isLifted: false))
         }
         if let drag, drag.origin.isInDock {
             let slot = drag.target.isInDock ? drag.target : drag.origin
@@ -255,6 +279,10 @@ final class HomeScreenModel {
         apps = lookup
 
         var updated = layout
+        if let store = keys.first(where: { lookup[$0]?.appInfo.bundleIdentifier() == BundledStore.bundleIdentifier }),
+           updated.slot(of: .app(store)) == nil {
+            updated.insert(.app(store), at: .page(0, index: 0))
+        }
         updated.reconcile(withAppKeys: keys)
         if updated != layout {
             withAnimation(HomeDesign.reflow) {
@@ -294,13 +322,9 @@ final class HomeScreenModel {
         }
     }
 
-    /// Follows a link zContainer was opened with: links that do something in
-    /// an app, or bring up zContainer, show the Home Screen, as do
-    /// certificates sent to zContainer and requests from Zeus, whose
-    /// questions show over it.
     func handle(_ route: HomeRoute) {
         switch route {
-        case .home, .app, .certificate, .certificateFile, .zeusRequests:
+        case .home, .ryP0NotificationTest, .app, .certificate, .certificateFile:
             showHomeScreen()
         }
     }

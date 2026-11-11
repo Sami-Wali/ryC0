@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// Installs, launches, hides and removes the apps inside zContainer, whichever
+/// Installs, launches, hides and removes the apps inside ryC0, whichever
 /// screen asks. It is the delegate of every LCAppModel, so JIT launches and the
 /// question about stopping multitasking apps work from any screen. It keeps
 /// what its flows need to show (errors, questions, the JIT log, install
@@ -17,28 +17,22 @@ final class AppLaunchCoordinator {
     /// The installed apps and the hidden-app state the flows work on.
     @ObservationIgnored let sharedModel: SharedModel
 
-    /// Downloads the IPAs that install links point at. `downloadAlert(helper:)`
-    /// shows its progress.
+    /// Fallback transport before the durable received-app queue is attached.
+    /// Normal URL downloads belong to PendingInstallQueue.
     @ObservationIgnored let downloadHelper = DownloadHelper()
 
-    /// Runs after every install, replace and removal, so what depends on the
-    /// installed apps follows them. HomeRouter sets it to write the list of
-    /// apps Zeus reads.
     @ObservationIgnored var onAppsChanged: @MainActor () -> Void = {}
 
     /// The error to show, as the person reads it, or nil when there is none.
     var errorMessage: String?
 
-    /// Whether an IPA is being installed: downloaded, unpacked, moved in and
-    /// signed. Installs run one at a time. Install links that arrive meanwhile
-    /// wait in onboarding's queue (HomeRouter), the queue's installs and IPAs
-    /// picked in Files wait their turn (`waitForInstallTurn()`), and an
-    /// install started some other way meanwhile, such as an itms-services
-    /// link from the built-in browser or an `open-url` link, says zContainer
-    /// is busy.
+    /// Whether an IPA is being unpacked, moved in and signed. File imports
+    /// and received packages share this install gate; downloads run
+    /// independently in PendingInstallQueue.
     var isInstalling = false
     /// How far unpacking and signing the current IPA has come, from 0 to 1.
     var installProgress: Float = 0
+    private(set) var lastInstallWarning: String?
     @ObservationIgnored private var installObserver: NSKeyValueObservation?
 
     /// The choices `installReplacePrompt` offers while it is open.
@@ -126,7 +120,7 @@ final class AppLaunchCoordinator {
     /// web addresses.
     func installFromPlist(urlStr: String) async {
         if isInstalling {
-            errorMessage = "zc.install.busy".loc
+            errorMessage = "ryc0.install.busy".loc
             return
         }
         if sharedModel.multiLCStatus == 2 {
@@ -173,7 +167,7 @@ final class AppLaunchCoordinator {
     }
 
     /// Installs the IPA at a web address, downloading it first, or at a file
-    /// URL, such as an IPA opened with zContainer or shared to it. Any other
+    /// URL, such as an IPA opened with ryC0 or shared to it. Any other
     /// scheme is turned away.
     func installFromUrl(urlStr: String) async {
         guard let installUrl = claimInstall(urlStr: urlStr) else {
@@ -183,13 +177,13 @@ final class AppLaunchCoordinator {
     }
 
     /// Marks an install from `urlStr` as running and returns its URL, or says
-    /// why it can't start (busy, a secondary zContainer, or an address that is
+    /// why it can't start (busy, a secondary ryC0, or an address that is
     /// neither a file URL nor a web address) and returns nil. It never
     /// suspends, so nothing can start an install between the check and the
     /// claim.
     private func claimInstall(urlStr: String) -> URL? {
         if isInstalling {
-            errorMessage = "zc.install.busy".loc
+            errorMessage = "ryc0.install.busy".loc
             return nil
         }
         if sharedModel.multiLCStatus == 2 {
@@ -239,10 +233,10 @@ final class AppLaunchCoordinator {
     /// UUID.
     private nonisolated static let unpackFolderPrefix = "Unpack-"
 
-    /// Deletes the download and unpack folders of installs that zContainer
+    /// Deletes the download and unpack folders of installs that ryC0
     /// stopping cut short, such as iOS ending it halfway through unpacking a
     /// large IPA, since their own cleanup never ran. It also deletes what
-    /// `moveToTmp(_:)` moved there and zContainer stopped before deleting:
+    /// `moveToTmp(_:)` moved there and ryC0 stopped before deleting:
     /// old apps a swap left behind, apps `AppBundleSwap.recover(in:)` cleared
     /// away at this launch, removed apps and their data, and containers
     /// removed and data deleted in an app's settings. It runs before any
@@ -266,7 +260,7 @@ final class AppLaunchCoordinator {
         }
     }
 
-    /// Moves a folder zContainer is done with, such as the old app a replace
+    /// Moves a folder ryC0 is done with, such as the old app a replace
     /// leaves behind, into tmp under a name `removeLeftoverInstallFolders()`
     /// deletes, so the deleting can wait. It's one rename, never a copy.
     /// - Returns: Where the folder went, or nil when it couldn't be moved and
@@ -293,12 +287,12 @@ final class AppLaunchCoordinator {
         }
     }
 
-    /// Whether a URL is a web address, the only kind zContainer downloads.
+    /// Whether a URL is a web address, the only kind ryC0 downloads.
     private static func isWebAddress(_ url: URL) -> Bool {
         ["http", "https"].contains(url.scheme?.lowercased() ?? "")
     }
 
-    /// Installs an IPA from a file URL. When zContainer can't read the file
+    /// Installs an IPA from a file URL. When ryC0 can't read the file
     /// itself, it tries the bookmark the share extension leaves, when it
     /// names this file, and then security-scoped access. An IPA in the Inbox
     /// is deleted afterwards. The caller marks the install as running.
@@ -352,20 +346,10 @@ final class AppLaunchCoordinator {
         return outcome
     }
 
-    /// Unpacks an IPA, moves its app into the Applications folder, patches and
-    /// signs it, and adds it to the Home Screen. When an app with the same
-    /// bundle ID is installed, `policy` decides what happens: the three-way
-    /// question, or for an update from Zeus a one-tap one. A replaced app keeps
-    /// its data and settings, and its folder is swapped in one step, so
-    /// zContainer stopping halfway never loses the link to its data. A signing
-    /// problem doesn't stop the install: the app stays unsigned and the problem
-    /// is shown.
-    /// - Returns: The app added or replaced, or `.cancelled` when the person
-    ///   kept what was installed.
-    /// - Throws: Why nothing was installed, such as an IPA without an app, or
-    ///   an `AppInstallError`.
     @discardableResult
     func installIpaFile(_ url: URL, policy: AppInstallPolicy = .ask) async throws -> AppInstallOutcome {
+        guard sharedModel.multiLCStatus != 2 else { throw "lc.appList.manageInPrimaryTip".loc }
+        lastInstallWarning = nil
         // However the install ends, what depends on the installed apps
         // follows them.
         defer {
@@ -410,7 +394,7 @@ final class AppLaunchCoordinator {
         guard !isSymbolicLink(appFolderPath) else {
             throw "lc.appList.bundleNotFondError".loc
         }
-        // zContainer writes an app's settings itself: the old app's for a
+        // ryC0 writes an app's settings itself: the old app's for a
         // replace, its own defaults for a new app. Settings the IPA carries
         // would pick the app's data folders and bundle ID, so they go: an
         // LCAppInfo.plist, and the keys an old LiveContainer kept in
@@ -426,7 +410,7 @@ final class AppLaunchCoordinator {
               let bundleIdentifier = newAppInfo.bundleIdentifier() else {
             throw "lc.appList.infoPlistCannotReadError".loc
         }
-        // An executable zContainer can't run, like an encrypted one, is turned
+        // An executable ryC0 can't run, like an encrypted one, is turned
         // away before anything is asked about it, and before it could take
         // the place of a copy that works.
         if let problem = newAppInfo.executableProblem() {
@@ -458,11 +442,13 @@ final class AppLaunchCoordinator {
         switch policy {
         case .ask:
             choice = try await askWhereToInstall(newAppInfo, bundleIdentifier: bundleIdentifier, folderStem: folderStem)
-        case let .fromZeus(expected, replacesFolder):
-            guard bundleIdentifier == expected else {
-                throw AppInstallError.bundleMismatch(expected: expected, found: bundleIdentifier)
+        case .bundledStore:
+            guard bundleIdentifier == BundledStore.bundleIdentifier else {
+                throw AppInstallError.bundleMismatch(expected: BundledStore.bundleIdentifier, found: bundleIdentifier)
             }
-            choice = try await updateTarget(for: newAppInfo, bundleIdentifier: bundleIdentifier, folderStem: folderStem, replacesFolder: replacesFolder)
+            guard !hasBundledStore else { return .cancelled }
+            choice = AppReplaceOption(isReplace: false, nameOfFolderToInstall: newAppFolderName(for: folderStem))
+
         }
         guard let choice else {
             return .cancelled
@@ -513,6 +499,7 @@ final class AppLaunchCoordinator {
         }
         // The app stays installed, unsigned, when signing failed.
         if let signError {
+            lastInstallWarning = signError
             errorMessage = signSuccess ? "\("lc.appList.signSuccessWithError".loc)\n\n\(signError)" : signError.loc
         }
 
@@ -539,8 +526,8 @@ final class AppLaunchCoordinator {
             return .replaced(newAppModel)
         }
 
-        // New apps spoof their SDK version by default.
-        finalNewApp.spoofSDKVersion = true
+        // The bundled store is built for this host and uses its original SDK.
+        finalNewApp.spoofSDKVersion = policy != .bundledStore
         finalNewApp.installationDate = Date.now
         newAppModel = LCAppModel(appInfo: finalNewApp, delegate: self)
         sharedModel.apps.append(newAppModel)
@@ -550,13 +537,6 @@ final class AppLaunchCoordinator {
         return .added(newAppModel)
     }
 
-    /// Asks where an app goes when it's installed already, as every install
-    /// but an update from Zeus does: in place of one of the copies, or as a
-    /// new app in a folder of its own. Replacing a hidden app needs Face ID
-    /// first. Choosing a copy checks it isn't open, and asks once more when
-    /// the new app is older, since an app may not read data a newer version
-    /// left.
-    /// - Returns: The choice, or nil when the person kept what was installed.
     private func askWhereToInstall(_ incoming: LCAppInfo, bundleIdentifier: String, folderStem: String) async throws -> AppReplaceOption? {
         var copies = sharedModel.apps.filter { $0.appInfo.bundleIdentifier() == bundleIdentifier }
         if copies.isEmpty {
@@ -714,6 +694,8 @@ final class AppLaunchCoordinator {
             errorMessage = error.localizedDescription
             return
         }
+        app.uiSystemNotificationsEnabledAt = nil
+        LCSharedUtils.removeGuestNotifications(forApp: appInfo.relativeBundlePath)
         removeApp(app: app)
 
         guard deletingData else {
@@ -753,13 +735,24 @@ final class AppLaunchCoordinator {
     /// Opens an app tapped on the Home Screen. When the app already runs in a
     /// multitasking window, that window comes forward. Otherwise a locked app
     /// asks for Face ID first, and the app runs: signed if it needs to be, then
-    /// in a multitasking window or with zContainer turning into it, as its
+    /// in a multitasking window or with ryC0 turning into it, as its
     /// settings say, and with JIT when `forceJIT` asks, as Open with JIT does.
-    /// `willLaunch` runs just before zContainer turns into the app, after
+    /// `willLaunch` runs just before ryC0 turns into the app, after
     /// signing, so the Home Screen can zoom into it.
-    func open(_ app: LCAppModel, forceJIT: Bool? = nil, willLaunch: (@MainActor () async -> Void)? = nil) async {
+    func open(_ app: LCAppModel, containerFolderName: String? = nil, forceJIT: Bool? = nil, zoomOrigin: GuestZoomOrigin? = nil, willLaunch: (@MainActor () async -> Void)? = nil) async {
+        if app.appInfo.isLocked && !sharedModel.isHiddenAppUnlocked {
+            do {
+                guard try await LCUtils.authenticateUser() else {
+                    return
+                }
+            } catch {
+                errorMessage = error.localizedDescription
+                return
+            }
+        }
+
         if #available(iOS 16.0, *),
-           let folderName = app.uiSelectedContainer?.folderName,
+           let folderName = containerFolderName ?? app.uiSelectedContainer?.folderName,
            MultitaskManager.isUsing(container: folderName) {
             var found = false
             if #available(iOS 16.1, *) {
@@ -773,26 +766,15 @@ final class AppLaunchCoordinator {
             }
         }
 
-        // Opening an app can quit zContainer to turn into it, which would cut
+        // Opening an app can quit ryC0 to turn into it, which would cut
         // the install short.
         guard !isInstalling else {
-            errorMessage = "zc.install.busy".loc
+            errorMessage = "ryc0.install.busy".loc
             return
         }
 
-        if app.appInfo.isLocked && !sharedModel.isHiddenAppUnlocked {
-            do {
-                guard try await LCUtils.authenticateUser() else {
-                    return
-                }
-            } catch {
-                errorMessage = error.localizedDescription
-                return
-            }
-        }
-
         do {
-            try await app.runApp(forceJIT: forceJIT, willLaunch: willLaunch)
+            try await app.runApp(containerFolderName: containerFolderName, forceJIT: forceJIT, zoomOrigin: zoomOrigin, willLaunch: willLaunch)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -910,7 +892,7 @@ extension AppLaunchCoordinator: LCAppModelDelegate {
     }
 
     /// Moves an app between the Home Screen and the hidden apps after it was
-    /// hidden or shown. A hidden app's URL schemes stop counting as zContainer's,
+    /// hidden or shown. A hidden app's URL schemes stop counting as ryC0's,
     /// unless an app on the Home Screen declares them too.
     func changeAppVisibility(app: LCAppModel) {
         if app.appInfo.isHidden {
@@ -954,17 +936,8 @@ extension AppLaunchCoordinator: LCAppModelDelegate {
         LCSharedUtils.launchToGuestApp(withClassicMode: classicMode)
     }
 
-    /// Asks the JIT enabler to attach to an app already running in a
-    /// multitasking window, by its process ID: Zeus, or StikDebug or StosDebug,
-    /// either installed on the iPhone or inside zContainer as a shared app.
     func jitLaunch(withPID pid: Int, withScript script: String?, appName: String) async {
         let jitEnabler = JITEnablerType.current
-        if jitEnabler == .Zeus {
-            if !(await LCUtils.askZeusForJIT(withScript: script, pid: pid)) {
-                errorMessage = LCUtils.zeusMissingForJIT
-            }
-            return
-        }
         let bundleIdentifier = Bundle.main.bundleIdentifier ?? ""
         let encodedData = script?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
 
@@ -1003,8 +976,8 @@ extension AppLaunchCoordinator: LCAppModelDelegate {
         await runWhenMultitaskPrompt.ask()
     }
 
-    /// Whether an app inside zContainer declares the URL scheme and can run
-    /// here: in a secondary zContainer, only shared apps can.
+    /// Whether an app inside ryC0 declares the URL scheme and can run
+    /// here: in a secondary ryC0, only shared apps can.
     private func hasSharedApp(withScheme scheme: String) -> Bool {
         sharedModel.apps.contains { app in
             app.appInfo.urlSchemes().contains(scheme) && (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)

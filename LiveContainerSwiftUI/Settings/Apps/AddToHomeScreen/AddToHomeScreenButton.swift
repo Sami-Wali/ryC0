@@ -7,7 +7,7 @@ import SwiftUI
 
 /// Add to Home Screen, in the toolbar of an app's settings: opens the sheet
 /// that puts the app on the iPhone's own Home Screen, through
-/// AppShortcutPresenter, its icon in the style zContainer's Home Screen shows
+/// AppShortcutPresenter, its icon in the style ryC0's Home Screen shows
 /// it in.
 struct AddToHomeScreenButton: View {
     @ObservedObject var app: LCAppModel

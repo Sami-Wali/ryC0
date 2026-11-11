@@ -2,7 +2,7 @@
 //  LCAcknowledgement.swift
 //  LiveContainerSwiftUI
 //
-//  Open source work zContainer ships or builds on, besides LiveContainer.
+//  Open source work ryC0 ships or builds on, besides LiveContainer.
 //
 
 import Foundation

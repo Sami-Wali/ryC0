@@ -11,7 +11,7 @@ import SwiftUI
 /// with JIT and, for an app with several containers, which one it opens in.
 struct AddToHomeScreenForm: View {
     @ObservedObject var app: LCAppModel
-    /// The icon's style, as zContainer's Home Screen shows it.
+    /// The icon's style, as ryC0's Home Screen shows it.
     let style: GeneratedIconStyle
     @Binding var options: AppShortcutOptions
     /// Makes the web clip, as Add does.
@@ -25,14 +25,14 @@ struct AddToHomeScreenForm: View {
                 Section {
                     AddToHomeScreenHeader(app: app, style: style, name: $options.name)
                 } footer: {
-                    Text("zc.shortcut.nextSteps".loc)
+                    Text("ryc0.shortcut.nextSteps".loc)
                 }
 
                 AddToHomeScreenJITSection(app: app, opensWithJIT: $options.opensWithJIT)
 
                 if app.uiContainers.count > 1 {
                     Section {
-                        Picker("zc.shortcut.container".loc, selection: $options.containerFolderName) {
+                        Picker("ryc0.shortcut.container".loc, selection: $options.containerFolderName) {
                             ForEach(app.uiContainers, id: \.folderName) { container in
                                 Text(container.name)
                                     .tag(Optional(container.folderName))
@@ -48,7 +48,7 @@ struct AddToHomeScreenForm: View {
                     Button("lc.common.cancel".loc, action: cancel)
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("zc.shortcut.add".loc, action: add)
+                    Button("ryc0.shortcut.add".loc, action: add)
                 }
             }
         }

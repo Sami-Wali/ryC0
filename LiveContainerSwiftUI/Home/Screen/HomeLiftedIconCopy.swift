@@ -74,7 +74,7 @@ struct HomeLiftedIconCopy: View {
         guard slot.isInDock else {
             return 1
         }
-        return metrics.dockIconMetrics(count: model.displayedLayout.dock.count).iconSize / metrics.iconSize
+        return metrics.dockIconMetrics(count: model.displayedLayout.dockRange(on: model.visibleDockPage).count).iconSize / metrics.iconSize
     }
 
     private func rise() {

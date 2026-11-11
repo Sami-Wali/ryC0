@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Settings > Apps, like the Apps page of the Settings app: every app inside
-/// zContainer by name, under its first letter, each opening its settings,
+/// ryC0 by name, under its first letter, each opening its settings,
 /// with a search field and, on iOS 26 and later, the index of letters along
 /// the edge. Hidden Apps comes last and opens after Face ID, Touch ID or the
 /// passcode, as on iOS.
@@ -24,9 +24,9 @@ struct AppsSettingsView: View {
             if sharedModel.apps.isEmpty {
                 Section {
                     ContentUnavailableView(
-                        "zc.settings.apps.empty".loc,
+                        "ryc0.settings.apps.empty".loc,
                         systemImage: "square.grid.2x2",
-                        description: Text("zc.settings.apps.emptyDetail".loc)
+                        description: Text("ryc0.settings.apps.emptyDetail".loc)
                     )
                 }
                 .listRowBackground(Color.clear)
@@ -77,7 +77,7 @@ struct AppsSettingsView: View {
     }
 
     /// Opens Hidden Apps once Face ID, Touch ID or the passcode passes, which
-    /// shows the hidden apps until zContainer quits.
+    /// shows the hidden apps until ryC0 quits.
     private func showHiddenApps() {
         Task {
             do {

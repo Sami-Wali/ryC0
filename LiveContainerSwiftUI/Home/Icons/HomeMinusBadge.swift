@@ -17,7 +17,7 @@ struct HomeMinusBadge: View {
 
     var body: some View {
         Button(action: action) {
-            Label("zc.home.removeNamedApp %@".localizeWithFormat(title), systemImage: "minus")
+            Label("ryc0.home.removeNamedApp %@".localizeWithFormat(title), systemImage: "minus")
                 .labelStyle(.iconOnly)
                 .font(.system(size: HomeDesign.minusBadgeSize * 0.5, weight: .bold))
                 .foregroundStyle(.black)

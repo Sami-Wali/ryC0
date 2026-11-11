@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// The first screen, laid out like the welcome screens of Apple's own apps:
-/// zContainer's icon and name, what it does, and Continue pinned at the
+/// ryC0's icon and name, what it does, and Continue pinned at the
 /// bottom under a note on what sharing one sandbox means. On iPad the icon
 /// and features sit in the middle of the room above the footer, so a tall
 /// window doesn't leave a wide gap under them.

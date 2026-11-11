@@ -6,8 +6,10 @@
 /// The Darwin notification an app in a multitasking window posts as a touch
 /// begins on it, followed by the folder name of its container, so the window
 /// it's in comes to the front. A touch on the app goes straight to it, past
-/// zContainer.
-#define LC_WINDOW_TOUCHED_NOTIFICATION_PREFIX "com.kdt.livecontainer.windowTouched."
+/// ryC0.
+#define LC_WINDOW_TOUCHED_NOTIFICATION_PREFIX "com.ry0.ryC0.windowTouched."
+#define LC_HOME_SWIPE_NOTIFICATION_PREFIX "com.ry0.ryC0.homeSwipe."
+#define LC_HOME_SWIPE_TOKEN_ENV "RYC0_HOME_SWIPE_TOKEN"
 
 const char **_CFGetProgname(void);
 const char **_CFGetProcessPath(void);

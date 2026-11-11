@@ -13,7 +13,7 @@ struct PadMaximumWidth: ViewModifier {
     let maxWidth: Double
 
     func body(content: Content) -> some View {
-        // SharedModel.isPhone never changes while zContainer runs, so the
+        // SharedModel.isPhone never changes while ryC0 runs, so the
         // content never switches between the two and keeps its identity.
         if SharedModel.isPhone {
             content

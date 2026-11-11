@@ -5,9 +5,9 @@
 
 import SwiftUI
 
-/// Shows the questions a certificate sent to zContainer asks, over the main
-/// window's root: the password of a .p12 file opened with zContainer, whether
-/// zContainer should sign apps with the certificate, and that it's ready once
+/// Shows the questions a certificate sent to ryC0 asks, over the main
+/// window's root: the password of a .p12 file opened with ryC0, whether
+/// ryC0 should sign apps with the certificate, and that it's ready once
 /// stored and checked. HomeRouter decides which one shows.
 struct CertificateImportPresentation: ViewModifier {
     let router: HomeRouter
@@ -20,24 +20,24 @@ struct CertificateImportPresentation: ViewModifier {
 
         content
             .alert(
-                "zc.settings.zeus.passwordTitle".loc,
+                "ryc0.settings.signing.passwordTitle".loc,
                 isPresented: Binding<Bool>.isPresented(for: $router.lockedCertificate),
                 presenting: router.lockedCertificate
             ) { locked in
-                SecureField("zc.settings.zeus.password".loc, text: $password)
+                SecureField("ryc0.settings.signing.password".loc, text: $password)
                 Button("lc.common.continue".loc) {
                     unlock(locked)
                 }
                 Button("lc.common.cancel".loc, role: .cancel, action: forgetPassword)
             } message: { locked in
-                Text(locked.isRetry ? "zc.certificateImport.wrongPassword".loc : "zc.settings.zeus.passwordMessage".loc)
+                Text(locked.isRetry ? "ryc0.certificateImport.wrongPassword".loc : "ryc0.settings.signing.passwordMessage".loc)
             }
             .alert(
-                "zc.certificateImport.title".loc,
+                "ryc0.certificateImport.title".loc,
                 isPresented: Binding<Bool>.isPresented(for: $router.certificateOffer),
                 presenting: router.certificateOffer
             ) { offer in
-                Button("zc.certificateImport.use".loc) {
+                Button("ryc0.certificateImport.use".loc) {
                     use(offer)
                 }
                 Button("lc.common.cancel".loc, role: .cancel) {
@@ -47,20 +47,20 @@ struct CertificateImportPresentation: ViewModifier {
                 Text(message(for: offer))
             }
             .alert(
-                "zc.certificateImport.readyTitle".loc,
+                "ryc0.certificateImport.readyTitle".loc,
                 isPresented: Binding<Bool>.isPresented(for: $router.storedCertificateTeam),
                 presenting: router.storedCertificateTeam
             ) { _ in
                 Button("lc.common.ok".loc) { }
             } message: { teamID in
-                Text("zc.certificateImport.readyMessage %@".localizeWithFormat(teamID))
+                Text("ryc0.certificateImport.readyMessage %@".localizeWithFormat(teamID))
             }
     }
 
     /// What the question says: the certificate's team, and that it takes the
-    /// place of the certificate zContainer has, when it has one.
+    /// place of the certificate ryC0 has, when it has one.
     private func message(for offer: CertificateOffer) -> String {
-        let key = offer.replacesCurrent ? "zc.certificateImport.replaceMessage %@" : "zc.certificateImport.message %@"
+        let key = offer.replacesCurrent ? "ryc0.certificateImport.replaceMessage %@" : "ryc0.certificateImport.message %@"
         return key.localizeWithFormat(offer.teamID)
     }
 
@@ -88,7 +88,7 @@ struct CertificateImportPresentation: ViewModifier {
 }
 
 extension View {
-    /// Shows the questions a certificate sent to zContainer asks. Apply it
+    /// Shows the questions a certificate sent to ryC0 asks. Apply it
     /// once, on the main window's root.
     func certificateImportPresentation(_ router: HomeRouter) -> some View {
         modifier(CertificateImportPresentation(router: router))

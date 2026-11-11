@@ -5,16 +5,13 @@
 //  Created by Duy Tran on 2025/5/24.
 //
 
-DEVELOPMENT_TEAM[config=Debug] = AAAAA11111
+DEVELOPMENT_TEAM[config=Debug] = DHD9M6P75C
 DEVELOPMENT_TEAM[config=Release] = AAAAA11111
 
-DEVELOPMENT_TEAM_SUFFIX[config=Debug] = .$(DEVELOPMENT_TEAM)
-DEVELOPMENT_TEAM_SUFFIX[config=Release] =
+LIVECONTAINER_BUNDLE_IDENTIFIER = com.ry0.ryC0
+// One private group for ryC0 and its bundled extensions.
+APP_GROUP = group.com.ry0.ryC0
+RYC0_KEYCHAIN_GROUP = com.ry0.ryC0.shared
 
-LIVECONTAINER_BUNDLE_IDENTIFIER = app.reiko.zcontainer$(DEVELOPMENT_TEAM_SUFFIX)
-// The app group the app and its extensions share with Zeus, which assigns
-// group.app.reiko.zeus.TEAM. SideStore, AltStore and Impactor append the team
-// the same way. The name stays the same for every build, whatever its bundle
-// ID, and zContainer picks the group from its own entitlements
-// (LCSharedUtils appGroupID).
-APP_GROUP = group.app.reiko.zeus$(DEVELOPMENT_TEAM_SUFFIX)
+// Public source for the version distributed as ryC0.
+RYC0_SOURCE_URL = https:/$()/github.com/Sami-Wali/ryC0

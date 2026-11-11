@@ -5,21 +5,14 @@
 
 import SwiftUI
 
-/// The rows Settings opens on, in the Settings app's order: Zeus on top where
-/// the Apple Account is, with a row asking for attention under it when
-/// zContainer can't sign apps; then General, Appearance and Wallpaper; then
-/// Apps, which holds each app's settings, and Add App; and last Advanced,
-/// where the Settings app puts Developer. Each row opens a page of its own,
-/// except "Finish Setting Up zContainer", which opens onboarding again over
-/// the Home Screen, and Add App, a menu of the ways to add an app.
 struct SettingsRootSections: View {
-    @Environment(ZeusConnection.self) private var connection
+    @Environment(SigningStatus.self) private var connection
     @Environment(OnboardingModel.self) private var onboarding
 
     var body: some View {
         Section {
-            SettingsPageLink(page: .zeus) {
-                ZeusCard()
+            SettingsPageLink(page: .signing) {
+                SigningCard()
             }
         }
 
@@ -27,11 +20,11 @@ struct SettingsRootSections: View {
             Section {
                 if attention == .notSetUp {
                     Button(action: onboarding.present) {
-                        ZeusAttentionRow(attention: attention, showsChevron: true)
+                        SigningAttentionRow(attention: attention, showsChevron: true)
                     }
                 } else {
                     SettingsPageLink(page: .attention) {
-                        ZeusAttentionRow(attention: attention)
+                        SigningAttentionRow(attention: attention)
                     }
                 }
             }
@@ -39,15 +32,15 @@ struct SettingsRootSections: View {
 
         Section {
             SettingsPageLink(page: .general) {
-                SettingsRow(title: "zc.settings.general".loc, systemImage: "gear", color: .gray)
+                SettingsRow(title: "ryc0.settings.general".loc, systemImage: "gear", color: .gray)
             }
 
             SettingsPageLink(page: .appearance) {
-                SettingsRow(title: "zc.settings.appearance".loc, systemImage: "circle.lefthalf.filled", color: .blue)
+                SettingsRow(title: "ryc0.settings.appearance".loc, systemImage: "circle.lefthalf.filled", color: .blue)
             }
 
             SettingsPageLink(page: .wallpaper) {
-                SettingsRow(title: "zc.settings.wallpaper".loc, systemImage: "camera.macro", color: .cyan)
+                SettingsRow(title: "ryc0.settings.wallpaper".loc, systemImage: "camera.macro", color: .cyan)
             }
         }
 
@@ -61,7 +54,7 @@ struct SettingsRootSections: View {
 
         Section {
             SettingsPageLink(page: .advanced) {
-                SettingsRow(title: "zc.settings.advanced".loc, systemImage: "hammer.fill", color: .gray)
+                SettingsRow(title: "ryc0.settings.advanced".loc, systemImage: "hammer.fill", color: .gray)
             }
         }
     }

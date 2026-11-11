@@ -51,7 +51,7 @@ struct HomeFolderContent: View {
                 .opacity(isShown ? 1 : 0)
                 .contentShape(.rect)
                 .onTapGesture(perform: model.closeFolder)
-                .accessibilityLabel("zc.home.closeFolder".loc)
+                .accessibilityLabel("ryc0.home.closeFolder".loc)
                 .accessibilityAddTraits(.isButton)
 
             HomeFolderTitle(id: id, name: folder.name, folderMetrics: folderMetrics, screenWidth: metrics.size.width)

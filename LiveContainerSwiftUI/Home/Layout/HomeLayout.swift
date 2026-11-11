@@ -6,7 +6,7 @@
 import Foundation
 
 /// Where every icon sits: the pages, each holding up to 24 icons in order, the
-/// dock, holding up to 4 on an iPhone and 6 on an iPad, and the folders, whose
+/// paged dock, and the folders, whose
 /// icons sit on the pages or in the dock as an app's do. Like iOS, a page has
 /// no gaps; icons fill it from the top left. HomeLayoutStorage saves it as
 /// JSON.
@@ -18,7 +18,16 @@ struct HomeLayout: Codable, Equatable, Sendable {
     /// iPad, the most a 320 point Slide Over window still fits in a row. It is
     /// the device's, not the window's, so turning or resizing never pushes an
     /// icon out of the dock, and a layout saved before loads as it was.
-    static let dockCapacity = SharedModel.isPhone ? 4 : 6
+    static let dockIconsPerPage = SharedModel.isPhone ? 4 : 6
+
+    static func dockPage(for index: Int) -> Int {
+        index / dockIconsPerPage
+    }
+
+    func dockRange(on page: Int) -> Range<Int> {
+        let start = min(page * Self.dockIconsPerPage, dock.count)
+        return start..<min(start + Self.dockIconsPerPage, dock.count)
+    }
 
     /// The pages, left to right. There is always at least one, even if empty.
     var pages: [[HomeItem]]
@@ -44,8 +53,8 @@ struct HomeLayout: Codable, Equatable, Sendable {
     /// Reads a saved layout. One saved before folders came has none.
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        pages = try container.decode([[HomeItem]].self, forKey: .pages)
-        dock = try container.decode([HomeItem].self, forKey: .dock)
+        pages = try container.decode([[String]].self, forKey: .pages).map(HomeItem.decodeIdentifiers)
+        dock = try HomeItem.decodeIdentifiers(container.decode([String].self, forKey: .dock))
         folders = try container.decodeIfPresent([String: HomeFolder].self, forKey: .folders) ?? [:]
     }
 
@@ -122,15 +131,12 @@ struct HomeLayout: Codable, Equatable, Sendable {
     /// overflows pushes its last icon onto the start of the next page, adding
     /// one when needed. A position past the end of a page, the dock or a
     /// folder means its end. Returns false, leaving the layout as it was, when
-    /// the dock is full or a folder would go into a folder. An item for a
+    /// a folder would go into a folder. An item for a
     /// folder that's gone takes the next free slot instead.
     @discardableResult
     mutating func insert(_ item: HomeItem, at slot: HomeSlot) -> Bool {
         switch slot {
         case .dock(let index):
-            guard dock.count < Self.dockCapacity else {
-                return false
-            }
             dock.insert(item, at: min(max(index, 0), dock.count))
         case .page(let page, let index):
             let page = max(page, 0)
@@ -262,11 +268,6 @@ struct HomeLayout: Codable, Equatable, Sendable {
         }
         folders = keptFolders
 
-        // A layout saved by a different build could hold more than fits.
-        while dock.count > Self.dockCapacity {
-            let extra = dock.removeLast()
-            append(extra)
-        }
         var page = 0
         while page < pages.count {
             spill(from: page)
@@ -275,7 +276,7 @@ struct HomeLayout: Codable, Equatable, Sendable {
 
         removeEmptyPages()
         if !placed.contains(.settings) {
-            if dock.count < Self.dockCapacity {
+            if dock.count < Self.dockIconsPerPage {
                 dock.append(.settings)
             } else {
                 append(.settings)

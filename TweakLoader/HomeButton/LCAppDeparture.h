@@ -3,7 +3,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 // Walks the app through what iOS tells an app when the person goes Home,
-// before the Home button closes it to open zContainer again. Pressing the
+// before the Home button closes it to open ryC0 again. Pressing the
 // button ends the app's process while it is still on screen, so without this
 // it would never hear that it is leaving, and apps that save their work only
 // then (games, Core Data apps saving in the background callback) would lose
@@ -11,14 +11,14 @@ NS_ASSUME_NONNULL_BEGIN
 // its scene delegate and the scene notifications; the app does the same
 // through its app delegate, when it has no scene delegates, and the app
 // notifications. Termination isn't announced, since the app isn't ending yet
-// if zContainer doesn't open.
+// if ryC0 doesn't open.
 @interface LCAppDeparture : NSObject
 
 // Tells the app it is resigning active and entering the background.
 - (void)leave;
 
 // Brings the app back to the foreground and makes it active again, for when
-// zContainer didn't open after all and the app stays.
+// ryC0 didn't open after all and the app stays.
 - (void)comeBack;
 
 @end

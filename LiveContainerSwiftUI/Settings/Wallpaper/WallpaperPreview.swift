@@ -34,7 +34,7 @@ struct WallpaperPreview: View {
             }
             .padding(.vertical, 8)
             .accessibilityElement()
-            .accessibilityLabel("zc.settings.wallpaper.preview".loc)
+            .accessibilityLabel("ryc0.settings.wallpaper.preview".loc)
     }
 
     /// The size of the screen the preview copies. On iPhone, the Home

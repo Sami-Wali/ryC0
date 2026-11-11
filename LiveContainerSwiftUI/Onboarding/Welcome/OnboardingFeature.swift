@@ -5,10 +5,10 @@
 
 import Foundation
 
-/// What zContainer does, in the order the welcome screen lists it.
+/// What ryC0 does, in the order the welcome screen lists it.
 enum OnboardingFeature: Int, CaseIterable, Identifiable {
     case oneSlot
-    case signedByZeus
+    case certificateSigning
     case homeScreen
 
     var id: Self { self }
@@ -17,24 +17,24 @@ enum OnboardingFeature: Int, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .oneSlot: "square.grid.2x2.fill"
-        case .signedByZeus: "bolt.fill"
+        case .certificateSigning: "bolt.fill"
         case .homeScreen: String.homeScreenSymbol
         }
     }
 
     var title: String {
         switch self {
-        case .oneSlot: "zc.onboarding.feature.oneSlot".loc
-        case .signedByZeus: "zc.onboarding.feature.signedByZeus".loc
-        case .homeScreen: "zc.onboarding.feature.homeScreen".loc
+        case .oneSlot: "ryc0.onboarding.feature.oneSlot".loc
+        case .certificateSigning: "ryc0.onboarding.feature.certificateSigning".loc
+        case .homeScreen: "ryc0.onboarding.feature.homeScreen".loc
         }
     }
 
     var message: String {
         switch self {
-        case .oneSlot: "zc.onboarding.feature.oneSlotDetail".loc
-        case .signedByZeus: "zc.onboarding.feature.signedByZeusDetail".loc
-        case .homeScreen: "zc.onboarding.feature.homeScreenDetail".deviceLoc
+        case .oneSlot: "ryc0.onboarding.feature.oneSlotDetail".loc
+        case .certificateSigning: "ryc0.onboarding.feature.certificateSigningDetail".loc
+        case .homeScreen: "ryc0.onboarding.feature.homeScreenDetail".deviceLoc
         }
     }
 }

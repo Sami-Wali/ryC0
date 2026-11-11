@@ -14,7 +14,7 @@ struct SettingsRootList: View {
     /// has nothing to pick and each row pushes its page.
     var selection: Binding<SettingsPage?>?
 
-    @Environment(ZeusConnection.self) private var connection
+    @Environment(SigningStatus.self) private var connection
 
     var body: some View {
         Group {
@@ -30,8 +30,6 @@ struct SettingsRootList: View {
                 }
             }
         }
-        // Zeus may have brought a certificate, or the launch check found a
-        // problem, since Settings last looked.
         .onAppear(perform: connection.reload)
     }
 }

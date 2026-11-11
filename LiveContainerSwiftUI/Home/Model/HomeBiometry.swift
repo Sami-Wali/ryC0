@@ -32,11 +32,11 @@ enum HomeBiometry {
     var requireTitle: String {
         switch self {
         case .faceID:
-            "zc.home.requireFaceID".loc
+            "ryc0.home.requireFaceID".loc
         case .touchID:
-            "zc.home.requireTouchID".loc
+            "ryc0.home.requireTouchID".loc
         case .passcode:
-            "zc.home.requirePasscode".loc
+            "ryc0.home.requirePasscode".loc
         }
     }
 
@@ -44,11 +44,11 @@ enum HomeBiometry {
     var dontRequireTitle: String {
         switch self {
         case .faceID:
-            "zc.home.dontRequireFaceID".loc
+            "ryc0.home.dontRequireFaceID".loc
         case .touchID:
-            "zc.home.dontRequireTouchID".loc
+            "ryc0.home.dontRequireTouchID".loc
         case .passcode:
-            "zc.home.dontRequirePasscode".loc
+            "ryc0.home.dontRequirePasscode".loc
         }
     }
 
@@ -56,11 +56,11 @@ enum HomeBiometry {
     var hideTitle: String {
         switch self {
         case .faceID:
-            "zc.home.hideAndRequireFaceID".loc
+            "ryc0.home.hideAndRequireFaceID".loc
         case .touchID:
-            "zc.home.hideAndRequireTouchID".loc
+            "ryc0.home.hideAndRequireTouchID".loc
         case .passcode:
-            "zc.home.hideAndRequirePasscode".loc
+            "ryc0.home.hideAndRequirePasscode".loc
         }
     }
 

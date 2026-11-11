@@ -13,25 +13,73 @@ import SwiftUI
 struct AppRootView: View {
     @Environment(OnboardingModel.self) private var onboarding
     @Environment(HomeScreenModel.self) private var home
+    @Environment(AppLaunchCoordinator.self) private var coordinator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var isOpeningFromSwitcher = false
+    @Namespace private var zoomNamespace
 
     var body: some View {
         ZStack {
-            HomeScreenView()
+            HomeScreenView(zoomNamespace: zoomNamespace)
                 .scaleEffect(onboarding.isPresented && !reduceMotion ? OnboardingDesign.homeArrivalScale : 1)
                 .opacity(onboarding.isPresented ? 0 : 1)
                 // Hidden under onboarding for touches and VoiceOver alike.
-                .allowsHitTesting(!onboarding.isPresented)
-                .accessibilityHidden(onboarding.isPresented)
+                .allowsHitTesting(!onboarding.isPresented && !home.showsAppSwitcher)
+                .accessibilityHidden(onboarding.isPresented || home.showsAppSwitcher)
+
+            if home.showsAppSwitcher {
+                AppSwitcherView(zoomNamespace: zoomNamespace, open: openSwitcherSelection, goHome: dismissSwitcher)
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
 
             if onboarding.isPresented {
                 OnboardingView(startsAtConnect: onboarding.startsAtConnect)
                     .transition(.opacity)
-                    .zIndex(1)
+                    .zIndex(2)
+            }
+
+            if #available(iOS 16.0, *) {
+                FullScreenGuestStage()
+                    .ignoresSafeArea()
+                    .zIndex(3)
             }
         }
+        .animation(.easeOut(duration: reduceMotion ? 0.12 : 0.24), value: home.showsAppSwitcher)
+        .modifier(HomeScreenPresentation(model: home, zoomNamespace: zoomNamespace))
         .onChange(of: onboarding.isPresented, onboardingChanged)
+        .onReceive(MainWindow.guestErrors) { coordinator.errorMessage = $0 }
+        .onReceive(FullScreenGuestSession.shared.$isGuestVisible) { visible in
+            if #available(iOS 18.0, *) { return }
+            if visible && home.showsAppSwitcher { dismissSwitcher() }
+        }
         .appIconAppearance()
+    }
+
+    private func dismissSwitcher() {
+        home.showsAppSwitcher = false
+    }
+
+    private func openSwitcherSelection(_ app: LCAppModel, container: String?, frame: CGRect) {
+        guard home.showsAppSwitcher, !isOpeningFromSwitcher, let key = app.homeKey,
+              home.apps[key] === app, !app.appInfo.isHidden else { return }
+        isOpeningFromSwitcher = true
+        Task {
+            defer { isOpeningFromSwitcher = false }
+            await coordinator.open(app, containerFolderName: container, zoomOrigin: GuestZoomOrigin(cardFrame: frame)) {
+                await withCheckedContinuation { continuation in
+                    withAnimation(.easeOut(duration: 0.16)) {
+                        dismissSwitcher()
+                    } completion: {
+                        continuation.resume()
+                    }
+                }
+                home.prepareClassicReturn(page: home.page ?? 0, iconFrame: home.iconFrame(of: .app(key)))
+            }
+            // A native/virtual window can come forward without using the full-screen stage.
+            if #available(iOS 18.0, *), FullScreenGuestSession.shared.isPresenting(bundle: app.appInfo.relativeBundlePath) { return }
+            if home.showsAppSwitcher { dismissSwitcher() }
+        }
     }
 
     /// Closes what's open over the Home Screen, like Settings, when
@@ -39,6 +87,7 @@ struct AppRootView: View {
     /// screens.
     private func onboardingChanged() {
         if onboarding.isPresented {
+            dismissSwitcher()
             home.showHomeScreen()
         }
     }

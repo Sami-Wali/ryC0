@@ -81,7 +81,7 @@ struct LCEntitlementView : View {
                         .font(.system(.subheadline, design: .monospaced))
                 }
             }
-            .navigationTitle(isLiveProcess ? "LiveProcess Entitlements" : "zContainer Entitlements")
+            .navigationTitle(isLiveProcess ? "LiveProcess Entitlements" : "ryC0 Entitlements")
             .navigationBarTitleDisplayMode(.inline)
         } else {
             Text("lc.common.loading".loc)
@@ -126,17 +126,15 @@ struct LCEntitlementView : View {
         let entitlementTeamId = entitlementDict["com.apple.developer.team-identifier"] as? String
         teamId = entitlementTeamId
         if let entitlementTeamId {
-            if let appGroups = entitlementDict["com.apple.security.application-groups"] as? Array<String> {
-                if appGroups.count > 0 {
-                    appGroup = true
-                }
-            }
-            if let keyChainAccessGroups = entitlementDict["keychain-access-groups"] as? Array<String> {
+            appGroup = LCSharedUtils.hasAppGroup()
+            if let keyChainAccessGroups = entitlementDict["keychain-access-groups"] as? [String],
+               let group = LCSharedUtils.keychainGroupBase() {
+                let firstGroup = "\(entitlementTeamId).\(group)"
                 var notFound = true
-                if keyChainAccessGroups.contains("\(entitlementTeamId).app.reiko.zcontainer.shared") {
+                if keyChainAccessGroups.contains(firstGroup) {
                     notFound = false
                     for i in 1..<SharedModel.keychainAccessGroupCount {
-                        if !keyChainAccessGroups.contains("\(entitlementTeamId).app.reiko.zcontainer.shared.\(i)") {
+                        if !keyChainAccessGroups.contains("\(firstGroup).\(i)") {
                             notFound = true
                             continue
                         }
@@ -208,7 +206,7 @@ struct LCJITLessDiagnoseView : View {
                     NavigationLink {
                         LCEntitlementView(isLiveProcess: false)
                     } label: {
-                        Text("zContainer Entitlements".loc)
+                        Text("ryC0 Entitlements".loc)
                     }
                     if sharedModel.multiLCStatus == 0 {
                         NavigationLink {
@@ -372,7 +370,7 @@ struct LCJITLessDiagnoseView : View {
         // finish, since they all sign the same copy of the test library,
         // and waits for ZSign away from the main thread.
         Task {
-            let (success, error) = await ZeusCertificate.validateJITLessSetup()
+            let (success, error) = await SigningCertificate.validateJITLessSetup()
             if success {
                 successInfo = "lc.jitlessSetup.success".loc
                 successShow = true

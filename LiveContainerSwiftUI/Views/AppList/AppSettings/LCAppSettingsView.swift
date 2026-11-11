@@ -151,9 +151,7 @@ struct LCAppSettingsView: View {
                     Text("lc.appSettings.launchWithJit".loc)
                 }
                 .disabled(model.uiIs32bit)
-                // Only the tools that run a script for the app take one. Zeus
-                // answers what an app asks for itself, so it needs none.
-                if #available(iOS 26.0, *), model.uiIsJITNeeded, !model.uiIs32bit, JITEnablerType.current != .Zeus {
+                if #available(iOS 26.0, *), model.uiIsJITNeeded, !model.uiIs32bit {
                     HStack {
                         Text("lc.appSettings.jit26.script".loc)
                         Spacer()
@@ -214,7 +212,7 @@ struct LCAppSettingsView: View {
                 }
             } footer: {
 
-                    if #available(iOS 26.0, *), model.uiIsJITNeeded, JITEnablerType.current != .Zeus {
+                    if #available(iOS 26.0, *), model.uiIsJITNeeded {
                         Text("lc.appSettings.launchWithJitDesc".loc + "\n" + "lc.appSettings.jit26.scriptDesc".loc)
 
                     } else {
@@ -315,12 +313,25 @@ struct LCAppSettingsView: View {
                 Toggle(isOn: $model.uiFixLocalNotification) {
                     Text("lc.appSettings.fixLocalNotification".loc)
                 }
+                if model.uiFixLocalNotification {
+                    Toggle(isOn: Binding(
+                        get: { model.uiSystemNotificationsEnabledAt != nil },
+                        set: { model.uiSystemNotificationsEnabledAt = $0 ? .now : nil }
+                    )) {
+                        Text("ryc0.notifications.showInIOS".loc)
+                    }
+                    .disabled(model.uiIsLocked || model.uiIsHidden)
+                }
                 Toggle(isOn: $model.uiUseLCBundleId) {
                     Text("lc.appSettings.useLCBundleId".loc)
                 }
             } header: {
                 Text("lc.appSettings.fixes".loc)
             } footer: {
+                Text("ryc0.notifications.help".loc)
+                if model.uiFixLocalNotification {
+                    Text("ryc0.notifications.showInIOS.help".loc)
+                }
                 Text("lc.appSettings.useLCBundleIdDesc".loc)
             }
             
@@ -670,7 +681,7 @@ struct LCAppSettingsView: View {
                 })
             }
             
-            appInfo.setBundlePath(LCPath.lcGroupBundlePath.appendingPathComponent(appInfo.relativeBundlePath).path)
+            model.setBundlePath(LCPath.lcGroupBundlePath.appendingPathComponent(appInfo.relativeBundlePath).path)
             appInfo.isShared = true
             model.uiIsShared = true
         } catch {
@@ -728,7 +739,7 @@ struct LCAppSettingsView: View {
                 model.uiTweakFolder = tweakFolder
             }
             
-            appInfo.setBundlePath(LCPath.bundlePath.appendingPathComponent(appInfo.relativeBundlePath).path)
+            model.setBundlePath(LCPath.bundlePath.appendingPathComponent(appInfo.relativeBundlePath).path)
             appInfo.isShared = false
             model.uiIsShared = false
             for container in model.uiContainers {

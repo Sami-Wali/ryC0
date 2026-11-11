@@ -32,16 +32,16 @@ struct HomeAppMenu: View {
         }
 
         Section {
-            Button("zc.home.openWithJIT".loc, systemImage: "bolt", action: openWithJIT)
+            Button("ryc0.home.openWithJIT".loc, systemImage: "bolt", action: openWithJIT)
             // A 32-bit app always opens with JIT.
-            Toggle("zc.home.alwaysOpenWithJIT".loc, systemImage: "bolt.badge.automatic", isOn: $app.uiIsJITNeeded)
+            Toggle("ryc0.home.alwaysOpenWithJIT".loc, systemImage: "bolt.badge.automatic", isOn: $app.uiIsJITNeeded)
                 .disabled(app.uiIs32bit)
             // Multitasking windows need iOS 16.
             if #available(iOS 16.0, *) {
-                Toggle("zc.home.openInWindow".loc, systemImage: "macwindow", isOn: $app.opensInWindow)
+                Toggle("ryc0.home.openInWindow".loc, systemImage: "macwindow", isOn: $app.opensInWindow)
             }
-            Button("zc.home.openInNewContainer".loc, systemImage: "plus.square.on.square", action: openInNewContainer)
-            Button("zc.home.appSettings".loc, systemImage: "gearshape", action: showSettings)
+            Button("ryc0.home.openInNewContainer".loc, systemImage: "plus.square.on.square", action: openInNewContainer)
+            Button("ryc0.home.appSettings".loc, systemImage: "gearshape", action: showSettings)
         }
 
         Section {
@@ -51,10 +51,10 @@ struct HomeAppMenu: View {
         Section {
             HomeLockMenu(app: app)
             if showsEditHomeScreen {
-                Button("zc.home.editHomeScreen".loc, systemImage: .homeScreenSymbol, action: model.beginEditingAfterMenu)
+                Button("ryc0.home.editHomeScreen".loc, systemImage: .homeScreenSymbol, action: model.beginEditingAfterMenu)
             }
             if !app.uiIsShared {
-                Button("zc.home.removeApp".loc, systemImage: "minus.circle", role: .destructive, action: requestRemoval)
+                Button("ryc0.home.removeApp".loc, systemImage: "minus.circle", role: .destructive, action: requestRemoval)
             }
         }
     }

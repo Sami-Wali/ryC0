@@ -8,17 +8,17 @@ import Foundation
 /// Replaces an installed app's folder in one step, so the folder always holds
 /// one whole app with the settings that link it to its data.
 ///
-/// The new app waits beside the old one as `FOLDER.zcnew`, where it gets the
+/// The new app waits beside the old one as `FOLDER.ryc0new`, where it gets the
 /// old app's settings and saves them. Then the two folders swap places
-/// (`renamex_np` with `RENAME_SWAP`), and the `.zcnew` folder, which now
+/// (`renamex_np` with `RENAME_SWAP`), and the `.ryc0new` folder, which now
 /// holds the old app, moves to tmp and is deleted there in the background.
-/// Whenever zContainer stops, the folder holds either the old app or the new
+/// Whenever ryC0 stops, the folder holds either the old app or the new
 /// one with its settings, and `recover(in:)` clears away what's left at the
-/// next launch. No scan of the Applications folders takes a `.zcnew` folder
+/// next launch. No scan of the Applications folders takes a `.ryc0new` folder
 /// for an app, since its name doesn't end in `.app`.
 enum AppBundleSwap {
     /// What the name of a folder waiting to be swapped in ends in.
-    static let stagedSuffix = ".zcnew"
+    static let stagedSuffix = ".ryc0new"
 
     /// Where the new app waits before it's swapped into `destination`.
     static func stagedURL(for destination: URL) -> URL {
@@ -83,7 +83,7 @@ enum AppBundleSwap {
         guard let names = try? fileManager.contentsOfDirectory(atPath: folder.path) else {
             return
         }
-        for name in names where name.hasSuffix(stagedSuffix) {
+        for name in names where name.hasSuffix(stagedSuffix) || name.hasSuffix(".zcnew") {
             let url = folder.appending(path: name)
             if AppLaunchCoordinator.moveToTmp(url) == nil {
                 try? fileManager.removeItem(at: url)

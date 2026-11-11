@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Settings > General, laid out like the General page of the Settings app:
-/// plain rows for About zContainer (the credits and licenses), the space the
+/// plain rows for About ryC0 (the credits and licenses), the space the
 /// apps take and the tools that tidy their data, and Reset.
 struct GeneralSettingsView: View {
     @EnvironmentObject private var sharedModel: SharedModel
@@ -17,19 +17,19 @@ struct GeneralSettingsView: View {
                 NavigationLink {
                     LCAboutView()
                 } label: {
-                    LabeledContent("zc.settings.about".loc, value: Self.version)
+                    LabeledContent("ryc0.settings.about".loc, value: Self.version)
                 }
             } footer: {
                 Text("lc.settings.warning".loc)
             }
 
             Section {
-                // A second zContainer keeps no apps of its own to measure.
+                // A second ryC0 keeps no apps of its own to measure.
                 if sharedModel.multiLCStatus != 2 {
                     NavigationLink {
                         LCStorageManagementView()
                     } label: {
-                        Text("zc.settings.storage".loc)
+                        Text("ryc0.settings.storage".loc)
                     }
                 }
 
@@ -48,11 +48,11 @@ struct GeneralSettingsView: View {
                 }
             }
         }
-        .navigationTitle("zc.settings.general".loc)
+        .navigationTitle("ryc0.settings.general".loc)
         .navigationBarTitleDisplayMode(.inline)
     }
 
-    /// zContainer's version, as About shows it in full.
+    /// ryC0's version, as About shows it in full.
     private static var version: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? ""
     }

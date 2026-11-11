@@ -16,7 +16,7 @@ import SwiftUI
 /// bar, so the button stays in reach on every page.
 struct SettingsSplitView: View {
     @Environment(HomeScreenModel.self) private var model
-    @Environment(ZeusConnection.self) private var connection
+    @Environment(SigningStatus.self) private var connection
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     /// The page picked in the sidebar. Nil while a collapsed window shows the
@@ -62,8 +62,6 @@ struct SettingsSplitView: View {
         !SharedModel.isPhone && sizeClass == .regular
     }
 
-    /// Whether the row under the Zeus card opens a page, which it does unless
-    /// zContainer was never set up and the row opens onboarding.
     private var hasAttentionPage: Bool {
         guard let attention = connection.attention else {
             return false
@@ -71,10 +69,6 @@ struct SettingsSplitView: View {
         return attention != .notSetUp
     }
 
-    /// Keeps a row picked while both columns show: General when nothing is,
-    /// as in the Settings app, and the Zeus card once the row under it goes
-    /// away, as fixing the problem on that page makes it. The page showing
-    /// stays the same then.
     private func settleSelection() {
         guard horizontalSizeClass == .regular else {
             return
@@ -82,7 +76,7 @@ struct SettingsSplitView: View {
         if page == nil {
             page = .general
         } else if page == .attention && !hasAttentionPage {
-            page = .zeus
+            page = .signing
         }
     }
 

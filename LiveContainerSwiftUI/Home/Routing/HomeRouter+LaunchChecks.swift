@@ -8,7 +8,7 @@ import SwiftUI
 /// The checks `start(in:)` runs when the main window opens. Each one reports
 /// what it finds through `launchProblem` or `crashReport`.
 extension HomeRouter {
-    /// Shows the error the last app launch left, or that zContainer stopped
+    /// Shows the error the last app launch left, or that ryC0 stopped
     /// while signing an app, then forgets it.
     func checkLastLaunchError() {
         var errorStr = UserDefaults.standard.string(forKey: "error")
@@ -24,7 +24,7 @@ extension HomeRouter {
         isShowingCrashReport = true
     }
 
-    /// Remembers the team zContainer is signed by. A secondary zContainer has
+    /// Remembers the team ryC0 is signed by. A secondary ryC0 has
     /// to be signed by the primary one's team, or it reports a mismatch.
     func checkTeamId() {
         if let certificateTeamId = UserDefaults.standard.string(forKey: "LCCertificateTeamId") {
@@ -59,9 +59,9 @@ extension HomeRouter {
         UserDefaults.standard.set(currentTeamId, forKey: "LCCertificateTeamId")
     }
 
-    /// Records a secondary zContainer's bundle ID for the primary one, and
+    /// Records a secondary ryC0's bundle ID for the primary one, and
     /// checks once that the bundle ID in Info.plist matches the App ID
-    /// zContainer was signed with.
+    /// ryC0 was signed with.
     func checkAndSaveBundleId() {
         if sharedModel.multiLCStatus == 2 {
             let scheme = UserDefaults.lcAppUrlScheme() ?? ""
@@ -95,17 +95,8 @@ extension HomeRouter {
         UserDefaults.standard.set(true, forKey: "LCBundleIdChecked")
     }
 
-    /// Checks the certificate Zeus put inside the app once after it's stored,
-    /// quietly, and shows what went wrong if something did, unless onboarding
-    /// shows, whose steps say so themselves.
-    func checkZeusCertificate() async {
-        guard let problem = await ZeusCertificate.checkIfNeeded(), !onboarding.isPresented else {
-            return
-        }
-        launchProblem = problem
-    }
 
-    /// Reports when zContainer isn't signed with a development certificate,
+    /// Reports when ryC0 isn't signed with a development certificate,
     /// which it needs to sign and run the apps inside it.
     func checkGetTaskAllow() {
         let task = SecTaskCreateFromSelf(nil)

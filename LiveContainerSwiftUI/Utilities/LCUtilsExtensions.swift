@@ -206,44 +206,6 @@ extension LCUtils {
         }
     }
     
-    /// Asks Zeus to start zContainer with JIT, as it starts its own apps:
-    /// Zeus relaunches it with the debugger attached, through the iPhone's own
-    /// services, and zContainer then opens the app waiting to launch. With
-    /// `pid`, Zeus attaches to that process instead, an app running in a
-    /// multitasking window. The link takes the form StikDebug's does, with the
-    /// app's JIT script as base64. Returns whether Zeus could be opened.
-    static func askZeusForJIT(withScript script: String?, pid: Int? = nil) async -> Bool {
-        guard let url = zeusJITURL(script: script, pid: pid) else {
-            return false
-        }
-        return await UIApplication.shared.open(url)
-    }
-
-    /// The link that asks Zeus for JIT, every value percent-encoded, as a
-    /// script's base64 holds characters a query would otherwise misread.
-    static func zeusJITURL(script: String?, pid: Int?) -> URL? {
-        var allowed = CharacterSet.alphanumerics
-        allowed.insert(charactersIn: "-._~")
-        func item(_ name: String, _ value: String) -> URLQueryItem {
-            URLQueryItem(name: name, value: value.addingPercentEncoding(withAllowedCharacters: allowed))
-        }
-        var items = [item("bundle-id", Bundle.main.bundleIdentifier ?? "")]
-        if let pid {
-            items.append(item("pid", String(pid)))
-        }
-        if let script, !script.isEmpty {
-            items.append(item("script-data", script))
-        }
-        var components = URLComponents()
-        components.scheme = "zeus"
-        components.host = "enable-jit"
-        components.percentEncodedQueryItems = items
-        return components.url
-    }
-
-    /// What zContainer says when Zeus, set to enable JIT, isn't there.
-    static let zeusMissingForJIT = "Zeus isn't on this iPhone. Install Zeus, or choose another way to enable JIT in Settings > Advanced > JIT."
-
     public static func askForJIT(withScript script: String? = nil, appName: String? = nil, classicMode: UInt = 0, onServerMessage: ((String) -> Void)? = nil) async -> Bool {
         // if LiveContainer is installed by TrollStore
         let tsPath = "\(Bundle.main.bundlePath)/../_TrollStore"
@@ -255,13 +217,7 @@ extension LCUtils {
         let groupUserDefaults = LCUtils.appGroupUserDefault
         let jitEnabler = JITEnablerType.current
 
-        if jitEnabler == .Zeus {
-            onServerMessage?("JIT acquisition will continue in Zeus.")
-            if !(await askZeusForJIT(withScript: script)) {
-                onServerMessage?(zeusMissingForJIT)
-            }
-            return false
-        } else if(jitEnabler == .SideJITServer){
+        if jitEnabler == .SideJITServer {
             guard
                   let sideJITServerAddress = groupUserDefaults.string(forKey: "LCSideJITServerAddress"),
                   let deviceUDID = groupUserDefaults.string(forKey: "LCDeviceUDID"),
@@ -359,12 +315,12 @@ extension LCUtils {
                     }
                 }
                 guard let appToLaunch else {
-                    onServerMessage?("StosDebug is not installed in zContainer.")
+                    onServerMessage?("StosDebug is not installed in ryC0.")
                     return false
                 }
                 
                 if !appToLaunch.uiIsShared {
-                    onServerMessage?("StosDebug is installed in zContainer, but is not a shared app. Convert it to a shared app to continue.")
+                    onServerMessage?("StosDebug is installed in ryC0, but is not a shared app. Convert it to a shared app to continue.")
                     return false
                 }
                 // check if stosdebug is already running
@@ -378,7 +334,7 @@ extension LCUtils {
                     }
                 }
                 guard let freeScheme else {
-                    onServerMessage?("No free zContainer is available. Please either: \n(1)close one, \n(2)install a new one, \n(3)choose another method to enable JIT.")
+                    onServerMessage?("No free ryC0 is available. Please either: \n(1)close one, \n(2)install a new one, \n(3)choose another method to enable JIT.")
                     return false
                 }
                 
@@ -388,7 +344,7 @@ extension LCUtils {
                 LCUtils.appGroupUserDefault.removeObject(forKey: "LCLaunchExtensionContainerName")
                 LCUtils.appGroupUserDefault.removeObject(forKey: "LCLaunchExtensionLaunchURL")
                 LCUtils.appGroupUserDefault.set(Date.now, forKey: "LCLaunchExtensionLaunchDate")
-                onServerMessage?("JIT acquisition will continue in another zContainer.")
+                onServerMessage?("JIT acquisition will continue in another ryC0.")
                 
                 await UIApplication.shared.open(launchURL)
             } else {
@@ -422,12 +378,12 @@ extension LCUtils {
                     }
                 }
                 guard let appToLaunch else {
-                    onServerMessage?("StikDebug is not installed in zContainer.")
+                    onServerMessage?("StikDebug is not installed in ryC0.")
                     return false
                 }
                 
                 if !appToLaunch.uiIsShared {
-                    onServerMessage?("StikDebug is installed in zContainer, but is not a shared app. Convert it to a shared app to continue.")
+                    onServerMessage?("StikDebug is installed in ryC0, but is not a shared app. Convert it to a shared app to continue.")
                     return false
                 }
                 // check if stikdebug is already running
@@ -441,7 +397,7 @@ extension LCUtils {
                     }
                 }
                 guard let freeScheme else {
-                    onServerMessage?("No free zContainer is available. Please either: \n(1)close one, \n(2)install a new one, \n(3)choose another method to enable JIT.")
+                    onServerMessage?("No free ryC0 is available. Please either: \n(1)close one, \n(2)install a new one, \n(3)choose another method to enable JIT.")
                     return false
                 }
                 
@@ -451,7 +407,7 @@ extension LCUtils {
                 LCUtils.appGroupUserDefault.removeObject(forKey: "LCLaunchExtensionContainerName")
                 LCUtils.appGroupUserDefault.removeObject(forKey: "LCLaunchExtensionLaunchURL")
                 LCUtils.appGroupUserDefault.set(Date.now, forKey: "LCLaunchExtensionLaunchDate")
-                onServerMessage?("JIT acquisition will continue in another zContainer.")
+                onServerMessage?("JIT acquisition will continue in another ryC0.")
                 
             } else {
                 launchURL = URL(string: launchURLStr)!

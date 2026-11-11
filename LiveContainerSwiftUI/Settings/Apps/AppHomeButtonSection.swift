@@ -5,38 +5,19 @@
 
 import SwiftUI
 
-/// The Home Button switch in an app's settings. The button floats over the
-/// app while it runs and brings back zContainer. TweakLoader draws it, so the
-/// switch is off limits while TweakLoader is turned off for the app, and until
-/// Settings > Appearance turns the button on for apps, which it isn't at
-/// first.
+/// Lets an app use the bar when the floating button would cover its content.
 struct AppHomeButtonSection: View {
     /// The app whose settings show.
     @ObservedObject var model: LCAppModel
 
-    /// Whether Settings > Appearance lets apps show the Home button, which it
-    /// doesn't until it's turned on there.
-    @AppStorage("LCShowHomeButtonInApps") private var showsHomeButtonInApps = false
+    @AppStorage(LCGuestHomeControlKey) private var homeControl = LCGuestHomeControl.bar
 
     var body: some View {
-        let isTweakLoaderOff = model.uiDontInjectTweakLoader && model.uiDontLoadTweakLoader
-
         Section {
-            Toggle("zc.settings.apps.homeButton".loc, isOn: $model.uiShowsHomeButton)
-                .disabled(isTweakLoaderOff || !showsHomeButtonInApps)
+            Toggle("ryc0.homeReturn.floating".loc, isOn: $model.uiShowsHomeButton)
+                .disabled(homeControl != .floatingButton)
         } footer: {
-            Text(footer(isTweakLoaderOff: isTweakLoaderOff))
-        }
-    }
-
-    /// Why the switch can't be used, when it can't, or else what it does.
-    private func footer(isTweakLoaderOff: Bool) -> String {
-        if !showsHomeButtonInApps {
-            "zc.settings.apps.homeButtonOffEverywhere".loc
-        } else if isTweakLoaderOff {
-            "zc.settings.apps.homeButtonNeedsTweakLoader".loc
-        } else {
-            "zc.settings.apps.homeButtonFooter".loc
+            Text((homeControl == .floatingButton ? "ryc0.homeReturn.appFallback" : "ryc0.homeReturn.chooseFloating").loc)
         }
     }
 }

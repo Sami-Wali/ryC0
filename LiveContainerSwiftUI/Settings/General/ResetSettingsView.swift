@@ -8,7 +8,7 @@ import UserNotifications
 
 /// Settings > General > Reset, like the Reset choices of the Settings app:
 /// putting the Home Screen back the way it first was, and clearing the
-/// notifications the apps inside zContainer sent. The tools that delete app
+/// notifications the apps inside ryC0 sent. The tools that delete app
 /// data are in Data Management.
 struct ResetSettingsView: View {
     @Environment(HomeScreenModel.self) private var home
@@ -20,22 +20,22 @@ struct ResetSettingsView: View {
     var body: some View {
         List {
             Section {
-                Button("zc.settings.reset.homeScreen".loc, action: confirmHomeScreenReset)
+                Button("ryc0.settings.reset.homeScreen".loc, action: confirmHomeScreenReset)
                     .confirmationDialog(
-                        "zc.settings.reset.homeScreenTitle".loc,
+                        "ryc0.settings.reset.homeScreenTitle".loc,
                         isPresented: $isConfirmingHomeScreenReset,
                         titleVisibility: .visible
                     ) {
-                        Button("zc.settings.reset.homeScreenConfirm".loc, role: .destructive, action: resetHomeScreen)
+                        Button("ryc0.settings.reset.homeScreenConfirm".loc, role: .destructive, action: resetHomeScreen)
                     } message: {
-                        Text("zc.settings.reset.homeScreenMessage".loc)
+                        Text("ryc0.settings.reset.homeScreenMessage".loc)
                     }
             }
 
             Section {
                 Button("lc.settings.clearNotifications".loc, action: clearNotifications)
             } footer: {
-                Text("zc.settings.reset.notificationsFooter".loc)
+                Text("ryc0.settings.reset.notificationsFooter".loc)
             }
         }
         .navigationTitle("lc.common.reset".loc)
@@ -53,8 +53,9 @@ struct ResetSettingsView: View {
     }
 
     /// Removes the notifications delivered and waiting to be delivered, and
-    /// the badge on zContainer's icon, which the apps inside set.
+    /// the badge on ryC0's icon, which the apps inside set.
     private func clearNotifications() {
+        LCSharedUtils.resetGuestNotifications()
         let center = UNUserNotificationCenter.current()
         center.removeAllDeliveredNotifications()
         center.removeAllPendingNotificationRequests()

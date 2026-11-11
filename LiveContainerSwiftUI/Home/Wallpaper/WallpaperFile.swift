@@ -7,7 +7,7 @@ import CoreImage
 import ImageIO
 import UIKit
 
-/// The wallpaper's files: the halo zContainer comes with, in its bundle, and
+/// The wallpaper's files: the halo ryC0 comes with, in its bundle, and
 /// in Application Support a JPEG made from the chosen photo, turned upright and made no bigger than the largest screens need,
 /// so it loads quickly and doesn't hold a 48 megapixel photo in memory.
 enum WallpaperFile {
@@ -36,11 +36,11 @@ enum WallpaperFile {
         UIImage(contentsOfFile: url.path(percentEncoded: false))?.preparingForDisplay()
     }
 
-    /// The halo zContainer comes with, decoded for drawing: a square one for
+    /// The halo ryC0 comes with, decoded for drawing: a square one for
     /// iPads, which fills their screens in both orientations, and a tall one
-    /// for iPhones. `Scripts/zc/art/wallpaper` renders both.
+    /// for iPhones. The bundled light wallpaper is shared across devices.
     static func loadDefault(isPad: Bool) -> UIImage? {
-        UIImage(named: isPad ? "DefaultWallpaperPad" : "DefaultWallpaperPhone")?.preparingForDisplay()
+        UIImage(named: "SpringBoardWallpaperLight")?.preparingForDisplay()
     }
 
     /// Makes a wallpaper from a photo's data: the picture decoded for

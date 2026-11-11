@@ -9,7 +9,7 @@ import SwiftUI
 /// it, as a list to tick like the Settings app's choices, and the address and
 /// UDID the tools that run as a server need.
 struct JITSettingsView: View {
-    @AppStorage("LCJITEnablerType", store: LCUtils.appGroupUserDefault) private var enabler: JITEnablerType = .Zeus
+    @AppStorage("LCJITEnablerType", store: LCUtils.appGroupUserDefault) private var enabler: JITEnablerType = .StikJIT
     @AppStorage("LCSideJITServerAddress", store: LCUtils.appGroupUserDefault) private var serverAddress = ""
     @AppStorage("LCDeviceUDID", store: LCUtils.appGroupUserDefault) private var deviceUDID = ""
 
@@ -51,7 +51,7 @@ struct JITSettingsView: View {
                 }
             }
         }
-        .navigationTitle("zc.settings.advanced.jit".loc)
+        .navigationTitle("ryc0.settings.advanced.jit".loc)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

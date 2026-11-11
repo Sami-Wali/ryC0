@@ -6,7 +6,7 @@ NS_ASSUME_NONNULL_BEGIN
 // Where the Home button rests over a running app: against one edge of the
 // screen, a fraction of the way along it. Keeping a fraction rather than a
 // point leaves the button in the same spot when the screen rotates or changes
-// size. The last place is saved in zContainer's own defaults, so it is the
+// size. The last place is saved in ryC0's own defaults, so it is the
 // same in every app, as AssistiveTouch's is.
 @interface LCHomeButtonPlacement : NSObject
 

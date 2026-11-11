@@ -11,18 +11,17 @@ import SwiftUI
 /// the Home Screen, where the new app shows as it installs.
 struct SettingsAddAppRow: View {
     @Environment(HomeScreenModel.self) private var model
-    @Environment(AppLaunchCoordinator.self) private var coordinator
 
     var body: some View {
         Menu {
             Button("lc.appList.installFromIpa".loc, systemImage: "doc.badge.plus", action: addFromFiles)
             Button("lc.appList.installFromUrl".loc, systemImage: "link.badge.plus", action: addFromLink)
         } label: {
-            SettingsRow(title: "zc.home.addApp".loc, systemImage: "plus", color: .green)
+            SettingsRow(title: "ryc0.home.addApp".loc, systemImage: "plus", color: .green)
         }
         // A menu's label takes the accent color; a Settings row's name doesn't.
         .tint(Color.primary)
-        .disabled(coordinator.isInstalling)
+        .disabled(model.coordinator.isInstalling)
     }
 
     private func addFromFiles() {

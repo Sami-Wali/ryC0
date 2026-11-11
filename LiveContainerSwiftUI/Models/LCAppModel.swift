@@ -6,7 +6,7 @@ import Foundation
 @MainActor
 protocol LCAppModelDelegate: AnyObject {
     /// Whether an install is running, which an app can't start during:
-    /// zContainer would quit into it, cutting the install short, or sign it
+    /// ryC0 would quit into it, cutting the install short, or sign it
     /// alongside the install.
     var isInstalling: Bool { get }
     func closeNavigationView()
@@ -18,6 +18,7 @@ protocol LCAppModelDelegate: AnyObject {
 }
 
 class LCAppModel: ObservableObject, Hashable {
+    private static let systemNotificationsKey = "RYC0GuestSystemNotificationOptIns"
     
     @Published var appInfo : LCAppInfo
     
@@ -71,7 +72,26 @@ class LCAppModel: ObservableObject, Hashable {
     @Published var uiFixLocalNotification : Bool {
         didSet {
             appInfo.fixLocalNotification = uiFixLocalNotification
+            if !uiFixLocalNotification { uiSystemNotificationsEnabledAt = nil }
         }
+    }
+    @Published var uiSystemNotificationsEnabledAt: Date? {
+        didSet {
+            if let path = appInfo.bundlePath() {
+                let defaults = UserDefaults.standard
+                var optIns = defaults.dictionary(forKey: Self.systemNotificationsKey) ?? [:]
+                optIns[path] = uiSystemNotificationsEnabledAt
+                defaults.set(optIns, forKey: Self.systemNotificationsKey)
+            }
+            Task { @MainActor in GuestNotificationMonitor.shared.refresh() }
+        }
+    }
+
+    func setBundlePath(_ bundlePath: String) {
+        let enabledAt = uiSystemNotificationsEnabledAt
+        if enabledAt != nil { uiSystemNotificationsEnabledAt = nil }
+        appInfo.setBundlePath(bundlePath)
+        if let enabledAt { uiSystemNotificationsEnabledAt = enabledAt }
     }
     
     @Published var uiHideLiveContainer : Bool {
@@ -199,6 +219,9 @@ class LCAppModel: ObservableObject, Hashable {
         self.uiUseLCBundleId = appInfo.doUseLCBundleId
         self.uiFixFilePickerNew = appInfo.fixFilePickerNew
         self.uiFixLocalNotification = appInfo.fixLocalNotification
+        self.uiSystemNotificationsEnabledAt = appInfo.bundlePath().flatMap { path in
+            UserDefaults.standard.dictionary(forKey: Self.systemNotificationsKey)?[path] as? Date
+        }
         self.uiHideLiveContainer = appInfo.hideLiveContainer
         self.uiShowsHomeButton = !appInfo.hideHomeButton
         self.uiDontInjectTweakLoader = appInfo.dontInjectTweakLoader
@@ -228,13 +251,10 @@ class LCAppModel: ObservableObject, Hashable {
     }
     
     // You should let LCAppModel.runApp to decide whether to run in multitask mode, but you may override the multitask parameter if necessary.
-    // `willLaunch` runs just before zContainer turns into the app the classic way, after signing, so the Home Screen can zoom into it.
-    func runApp(multitask: Bool? = nil, containerFolderName : String? = nil, bundleIdOverride : String? = nil, urlStr : String? = nil, forceJIT: Bool? = nil, willLaunch: (@MainActor () async -> Void)? = nil) async throws{
-        if isAppRunning {
-            return
-        }
-        
+    // `willLaunch` runs just before ryC0 turns into the app the classic way, after signing, so the Home Screen can zoom into it.
+    func runApp(multitask: Bool? = nil, containerFolderName : String? = nil, bundleIdOverride : String? = nil, urlStr : String? = nil, forceJIT: Bool? = nil, zoomOrigin: GuestZoomOrigin? = nil, willLaunch: (@MainActor () async -> Void)? = nil) async throws{
         await MainActor.run {
+            guard !isAppRunning else { return }
             if uiContainers.isEmpty {
                 let newName = NSUUID().uuidString
                 let newContainer = LCContainer(folderName: newName, name: newName, isShared: uiIsShared)
@@ -255,6 +275,24 @@ class LCAppModel: ObservableObject, Hashable {
         
         let classicMode = appInfo.defaultClassicMode
         let multitask = classicMode == 0 ? (multitask ?? shouldLaunchInMultitaskMode) : false
+        let launchBundle = bundleIdOverride ?? appInfo.relativeBundlePath
+#if targetEnvironment(simulator)
+        let jitNeeded = false
+#else
+        let jitNeeded = forceJIT ?? (appInfo.isJITNeeded || appInfo.is32bit)
+#endif
+        var hosted = false
+        if #available(iOS 16.0, *) {
+            if let launchBundle, let currentDataFolder,
+               await FullScreenGuestSession.shared.resume(bundle: launchBundle, container: currentDataFolder, url: urlStr, from: zoomOrigin) {
+                return
+            }
+            if !multitask && !appInfo.classicMode && !appInfo.is32bit {
+                if !jitNeeded { hosted = true }
+                else if #available(iOS 17.4, *) { hosted = true }
+            }
+        }
+        if isAppRunning { return }
 
         // MultitaskManager is changed only on the main thread, so read it there
         let isMultitasking = await MainActor.run { MultitaskManager.isMultitasking() }
@@ -267,7 +305,7 @@ class LCAppModel: ObservableObject, Hashable {
         }
 
         if await MainActor.run(body: { delegate?.isInstalling ?? false }) {
-            throw "zc.install.busy".loc
+            throw "ryc0.install.busy".loc
         }
         
         // this is rerouted to bringing app to front, so not needed here?
@@ -299,7 +337,7 @@ class LCAppModel: ObservableObject, Hashable {
         // find a free lc to run non-multitasking shared app. If none, ask user if they want to terminate all multitasking apps
         // read again on the main thread: a multitasking app may have closed during the awaits above
         let isStillMultitasking = await MainActor.run { MultitaskManager.isMultitasking() }
-        if isStillMultitasking && !multitask {
+        if isStillMultitasking && !multitask && !hosted {
             if self.uiIsShared {
                 var freeScheme: String? = nil
                 LCUtils.forEachInstalledLC(isFree: true) { scheme, shouldBreak in
@@ -352,6 +390,19 @@ class LCAppModel: ObservableObject, Hashable {
             }}
         }
         try await signApp(force: false)
+
+        if #available(iOS 16.0, *), hosted {
+            guard let launchBundle, let currentDataFolder,
+                  currentDataFolder == uiSelectedContainer?.folderName else {
+                throw "The app or its data container is unavailable."
+            }
+            let pid = try await FullScreenGuestSession.shared.launch(bundle: launchBundle, container: currentDataFolder, url: urlStr, from: zoomOrigin)
+            if jitNeeded {
+                await delegate?.jitLaunch(withPID: Int(pid), withScript: jitLaunchScriptJs, appName: appInfo.displayName())
+            }
+            await MainActor.run { appInfo.lastLaunched = Date() }
+            return
+        }
         
         if let bundleIdOverride {
             UserDefaults.standard.set(bundleIdOverride, forKey: "selected")
@@ -363,13 +414,6 @@ class LCAppModel: ObservableObject, Hashable {
         }
         UserDefaults.standard.set(uiSelectedContainer?.folderName, forKey: "selectedContainer")
         
-        var jitNeeded = appInfo.isJITNeeded || appInfo.is32bit
-        if let forceJIT {
-            jitNeeded = forceJIT
-        }
-#if targetEnvironment(simulator)
-        jitNeeded = false
-#endif
         if jitNeeded {
             if multitask, #available(iOS 17.4, *) {
                 try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -409,12 +453,15 @@ class LCAppModel: ObservableObject, Hashable {
                 try fileContents?.write(to: fileURL)
             }
             await willLaunch?()
+            // Save recency before relaunch can end the launcher process.
+            await MainActor.run { appInfo.lastLaunched = Date() }
             LCSharedUtils.launchToGuestApp(withClassicMode: classicMode)
         }
         
-        await MainActor.run {
-            // Record the launch time
-            appInfo.lastLaunched = Date()
+        await MainActor.run { [jitNeeded] in
+            if multitask || jitNeeded {
+                appInfo.lastLaunched = Date()
+            }
             isAppRunning = false
         }
     }
@@ -523,6 +570,7 @@ class LCAppModel: ObservableObject, Hashable {
                 await toggleHidden()
             }
         }
+        GuestNotificationMonitor.shared.refresh()
     }
     
     @MainActor
@@ -536,6 +584,7 @@ class LCAppModel: ObservableObject, Hashable {
             uiIsHidden = true
         }
         delegate?.changeAppVisibility(app: self)
+        GuestNotificationMonitor.shared.refresh()
     }
     
     func loadSupportedLanguages() throws {

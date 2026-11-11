@@ -5,42 +5,35 @@
 
 import SwiftUI
 
-/// The last step: zContainer is ready, with what was set up ticked off and
-/// anything left for later waiting in Settings, then a way into Zeus's
-/// Discord server. Like the last page of iOS's own setup, it only goes
-/// forward, and its button fades the Home Screen in.
 struct OnboardingDonePage: View {
     @Environment(OnboardingModel.self) private var onboarding
-    @Environment(ZeusConnection.self) private var connection
+    @Environment(SigningStatus.self) private var connection
     @Environment(OnboardingFlow.self) private var flow
 
     var body: some View {
         OnboardingSetupForm {
-            OnboardingHeader(title: "zc.onboarding.done.title".loc, message: message) {
+            OnboardingHeader(title: "ryc0.onboarding.done.title".loc, message: message) {
                 OnboardingDoneSymbol()
             }
         } content: {
             Section {
-                OnboardingChecklistRow(systemImage: "bolt.fill", title: "zc.settings.zeus".loc, isDone: connection.isConnected) {
-                    Text(zeusDetail)
+                OnboardingChecklistRow(systemImage: "bolt.fill", title: "ryc0.settings.signing".loc, isDone: connection.isReadyToSign) {
+                    Text(connection.summary)
                 }
 
-                OnboardingChecklistRow(systemImage: "signature", title: "zc.settings.setup.signing".loc, isDone: isSigningChecked) {
-                    Text(isSigningChecked ? "zc.onboarding.done.checked".loc : "zc.onboarding.done.notSetUp".loc)
+                OnboardingChecklistRow(systemImage: "signature", title: "ryc0.settings.setup.signing".loc, isDone: isSigningChecked) {
+                    Text(isSigningChecked ? "ryc0.onboarding.done.checked".loc : "ryc0.onboarding.done.notSetUp".loc)
                 }
 
-                OnboardingChecklistRow(systemImage: "square.grid.2x2.fill", title: "zc.onboarding.done.apps".loc, isDone: !installedNames.isEmpty) {
+                OnboardingChecklistRow(systemImage: "square.grid.2x2.fill", title: "ryc0.onboarding.done.apps".loc, isDone: !installedNames.isEmpty) {
                     Text(appsDetail)
                 }
             }
 
-            Section {
-                ZeusDiscordRow()
-            }
         }
         .onboardingBottomBar {
             OnboardingFooter {
-                OnboardingPrimaryButton(title: "zc.onboarding.done.start".loc, action: finish)
+                OnboardingPrimaryButton(title: "ryc0.onboarding.done.start".loc, action: finish)
             }
         }
         .navigationBarBackButtonHidden()
@@ -55,27 +48,11 @@ struct OnboardingDonePage: View {
         onboarding.pendingInstalls.installedNames
     }
 
-    /// Whether Zeus is connected, or why not: it isn't on this iPhone, or
-    /// zContainer has no usable certificate.
-    private var zeusDetail: String {
-        if connection.isConnected {
-            "zc.onboarding.done.connected".loc
-        } else if !connection.isZeusInstalled {
-            "zc.onboarding.done.zeusMissing".deviceLoc
-        } else {
-            "zc.onboarding.done.notSetUp".loc
-        }
-    }
-
-    /// That zContainer is ready, when it can sign, even without Zeus to send
-    /// it apps, or that what's left is in Settings.
     private var message: String {
         if connection.isReadyToSign && isSigningChecked {
-            connection.isZeusInstalled
-                ? "zc.onboarding.done.ready".loc
-                : "zc.onboarding.done.readyWithoutZeus".loc
+            "ryc0.onboarding.done.ready".loc
         } else {
-            "zc.onboarding.done.later".loc
+            "ryc0.onboarding.done.later".loc
         }
     }
 
@@ -84,9 +61,9 @@ struct OnboardingDonePage: View {
         if !installedNames.isEmpty {
             installedNames.formatted()
         } else if onboarding.pendingInstalls.hasUnfinishedItems {
-            "zc.home.installing".loc
+            "ryc0.home.installing".loc
         } else {
-            "zc.onboarding.done.noApps".loc
+            "ryc0.onboarding.done.noApps".loc
         }
     }
 

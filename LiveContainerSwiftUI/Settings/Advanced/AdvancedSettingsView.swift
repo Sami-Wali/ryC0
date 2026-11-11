@@ -9,12 +9,12 @@ import SwiftUI
 /// it already had. Tweaks and Multitask; the JIT enabler and the 32-bit
 /// emulator; Don't Sign New Apps; whether guest apps switch apps and open
 /// links without asking; the frame on icons made by Add to Home Screen; and
-/// the JIT-less diagnosis. zContainer's version sits at the bottom, and five
+/// the JIT-less diagnosis. ryC0's version sits at the bottom, and five
 /// taps on it add the Developer page.
 struct AdvancedSettingsView: View {
     @EnvironmentObject private var sharedModel: SharedModel
 
-    @AppStorage("LCJITEnablerType", store: LCUtils.appGroupUserDefault) private var jitEnabler: JITEnablerType = .Zeus
+    @AppStorage("LCJITEnablerType", store: LCUtils.appGroupUserDefault) private var jitEnabler: JITEnablerType = .StikJIT
     @AppStorage("LCSelected32BitEmulator", store: LCUtils.appGroupUserDefault) private var selected32BitEmulator = ""
     @AppStorage("LCDontSignApp", store: LCUtils.appGroupUserDefault) private var dontSignApp = false
     // In the app group, where apps in multitasking windows read them too.
@@ -24,7 +24,7 @@ struct AdvancedSettingsView: View {
 
     var body: some View {
         List {
-            // A second zContainer uses the first one's tweaks.
+            // A second ryC0 uses the first one's tweaks.
             if sharedModel.multiLCStatus != 2 {
                 Section {
                     NavigationLink {
@@ -49,10 +49,10 @@ struct AdvancedSettingsView: View {
                 NavigationLink {
                     JITSettingsView()
                 } label: {
-                    LabeledContent("zc.settings.advanced.jit".loc, value: jitEnabler.displayName)
+                    LabeledContent("ryc0.settings.advanced.jit".loc, value: jitEnabler.displayName)
                 }
 
-                Picker("zc.settings.advanced.emulator".loc, selection: $selected32BitEmulator) {
+                Picker("ryc0.settings.advanced.emulator".loc, selection: $selected32BitEmulator) {
                     Text("lc.common.none".loc)
                         .tag("")
                     ForEach(sharedModel.arm32EmuApps, id: \.self) { app in
@@ -62,7 +62,7 @@ struct AdvancedSettingsView: View {
                 }
                 .pickerStyle(.navigationLink)
             } footer: {
-                Text("zc.settings.advanced.emulatorFooter".loc)
+                Text("ryc0.settings.advanced.emulatorFooter".loc)
             }
 
             Section {
@@ -86,7 +86,7 @@ struct AdvancedSettingsView: View {
             Section {
                 Toggle("lc.settings.FrameIcon".loc, isOn: $frameShortcutIcons)
             } footer: {
-                Text("zc.settings.advanced.frameIconsFooter".deviceLoc)
+                Text("ryc0.settings.advanced.frameIconsFooter".deviceLoc)
             }
 
             Section {
@@ -100,14 +100,14 @@ struct AdvancedSettingsView: View {
                     NavigationLink {
                         DeveloperSettingsView()
                     } label: {
-                        Text("zc.settings.developer".loc)
+                        Text("ryc0.settings.developer".loc)
                     }
                 }
             } footer: {
                 SettingsVersionFooter()
             }
         }
-        .navigationTitle("zc.settings.advanced".loc)
+        .navigationTitle("ryc0.settings.advanced".loc)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

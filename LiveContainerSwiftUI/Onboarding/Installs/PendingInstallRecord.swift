@@ -6,9 +6,9 @@
 import Foundation
 
 /// One app PendingInstallQueue is bringing in, as PendingInstallStore
-/// writes it down, so the app comes back when zContainer closes before it's
+/// writes it down, so the app comes back when ryC0 closes before it's
 /// installed. Paths are kept relative to the app's folder, since iOS may
-/// move zContainer's data to another path when it's updated.
+/// move ryC0's data to another path when it's updated.
 struct PendingInstallRecord: Codable {
     /// The app's id, which also names its folder.
     var id: UUID
@@ -24,7 +24,4 @@ struct PendingInstallRecord: Codable {
     var fileName: String?
     /// The bookmark that finds an opened IPA again.
     var bookmark: Data?
-    /// For an app from Zeus, the id of the request Zeus left in the app
-    /// group, which finds the request again.
-    var zeusRequestID: UUID?
 }

@@ -5,32 +5,28 @@
 
 import SwiftUI
 
-/// Settings > Appearance: whether the Home button floats over the apps you
-/// open, which it doesn't until it's turned on here, while zContainer's own
-/// screens always show it; how the icons on zContainer's Home Screen look, on
-/// iOS 18 and later, which draw dark icons, where by default they follow Dark
-/// Mode, as iOS's own do; and zContainer's own icon on the iPhone's Home
-/// Screen, which a second zContainer doesn't offer, so it keeps the icon that
-/// tells it apart.
+/// Settings for returning from apps and for the launcher’s icons.
 struct AppearanceSettingsView: View {
     @AppStorage(HomeIconStyle.storageKey, store: LCUtils.appGroupUserDefault) private var iconStyle = HomeIconStyle.automatic
-
-    /// Whether apps show the Home button, which TweakLoader reads as
-    /// "LCShowHomeButtonInApps" before it draws the button over an app. Off
-    /// until it's turned on.
-    @AppStorage("LCShowHomeButtonInApps") private var showsHomeButtonInApps = false
+    @AppStorage(LCGuestHomeControlKey) private var homeControl = LCGuestHomeControl.bar
 
     var body: some View {
         List {
             Section {
-                Toggle("zc.settings.appearance.homeButtonInApps".loc, isOn: $showsHomeButtonInApps)
-            } footer: {
-                Text("zc.settings.appearance.homeButtonInAppsFooter".loc)
+                Picker("ryc0.homeReturn.title".loc, selection: $homeControl) {
+                    Text("ryc0.homeReturn.bar".loc).tag(LCGuestHomeControl.bar)
+                    Text("ryc0.homeReturn.floating".loc).tag(LCGuestHomeControl.floatingButton)
+                    Text("ryc0.homeReturn.clock".loc).tag(LCGuestHomeControl.clock)
+                }
+                .pickerStyle(.inline)
+                .labelsHidden()
+            } header: {
+                Text("ryc0.homeReturn.title".loc)
             }
 
             if #available(iOS 18.0, *) {
                 Section {
-                    Picker("zc.settings.appearance.iconStyle".loc, selection: $iconStyle) {
+                    Picker("ryc0.settings.appearance.iconStyle".loc, selection: $iconStyle) {
                         ForEach(HomeIconStyle.allCases) { style in
                             Text(style.title)
                                 .tag(style)
@@ -39,9 +35,9 @@ struct AppearanceSettingsView: View {
                     .pickerStyle(.inline)
                     .labelsHidden()
                 } header: {
-                    Text("zc.settings.appearance.iconStyle".loc)
+                    Text("ryc0.settings.appearance.iconStyle".loc)
                 } footer: {
-                    Text("zc.settings.appearance.iconStyleFooter".loc)
+                    Text("ryc0.settings.appearance.iconStyleFooter".loc)
                 }
             }
 
@@ -49,13 +45,13 @@ struct AppearanceSettingsView: View {
                 Section {
                     AppIconPicker()
                 } header: {
-                    Text("zc.settings.appIcon".loc)
+                    Text("ryc0.settings.appIcon".loc)
                 } footer: {
-                    Text("zc.settings.appIconFooter".loc)
+                    Text("ryc0.settings.appIconFooter".loc)
                 }
             }
         }
-        .navigationTitle("zc.settings.appearance".loc)
+        .navigationTitle("ryc0.settings.appearance".loc)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

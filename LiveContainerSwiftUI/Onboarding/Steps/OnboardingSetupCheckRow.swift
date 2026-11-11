@@ -10,8 +10,8 @@ import SwiftUI
 /// "Optional" when an optional part is missing, with what that costs under
 /// its name. When it failed, why is under its name, in red.
 struct OnboardingSetupCheckRow: View {
-    let check: ZeusSetupCheck
-    let result: ZeusCheckResult
+    let check: SigningSetupCheck
+    let result: SigningCheckResult
 
     var body: some View {
         OnboardingChecklistRow(systemImage: check.systemImage, title: check.title, isDone: result == .passed) {
@@ -23,7 +23,7 @@ struct OnboardingSetupCheckRow: View {
                 ProgressView()
                     .accessibilityLabel("lc.jitlessDiag.checking".loc)
             case .missing:
-                Text("zc.onboarding.check.optional".loc)
+                Text("ryc0.onboarding.check.optional".loc)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             case .failed, .passed:

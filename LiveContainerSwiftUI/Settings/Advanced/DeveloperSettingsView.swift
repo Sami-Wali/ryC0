@@ -29,28 +29,28 @@ struct DeveloperSettingsView: View {
             }
 
             Section {
-                Toggle("zc.settings.developer.ignoreJIT".loc, isOn: $ignoreJITOnLaunch)
-                Toggle("zc.settings.developer.keepSelected".loc, isOn: $keepSelectedWhenQuit)
-                Toggle("zc.settings.developer.waitForDebugger".loc, isOn: $waitForDebugger)
-                Toggle("zc.settings.developer.sharePrivateData".loc, isOn: $sharePrivateDataWithLiveProcess)
-                Toggle("zc.settings.developer.noWatchdog".loc, isOn: $disableLiveProcessWatchdog)
+                Toggle("ryc0.settings.developer.ignoreJIT".loc, isOn: $ignoreJITOnLaunch)
+                Toggle("ryc0.settings.developer.keepSelected".loc, isOn: $keepSelectedWhenQuit)
+                Toggle("ryc0.settings.developer.waitForDebugger".loc, isOn: $waitForDebugger)
+                Toggle("ryc0.settings.developer.sharePrivateData".loc, isOn: $sharePrivateDataWithLiveProcess)
+                Toggle("ryc0.settings.developer.noWatchdog".loc, isOn: $disableLiveProcessWatchdog)
             }
 
             Section {
-                Button("zc.settings.developer.exportCertificate".loc, action: exportCertificate)
-                Button("zc.settings.developer.exportDyld".loc, action: exportDyld)
-                Button("zc.settings.developer.exportBundle".loc, action: exportMainBundle)
+                Button("ryc0.settings.developer.exportCertificate".loc, action: exportCertificate)
+                Button("ryc0.settings.developer.exportDyld".loc, action: exportDyld)
+                Button("ryc0.settings.developer.exportBundle".loc, action: exportMainBundle)
             } footer: {
-                Text("zc.settings.developer.exportFooter".loc)
+                Text("ryc0.settings.developer.exportFooter".loc)
             }
 
             Section {
-                Button("zc.settings.developer.resetSymbolOffsets".loc, action: DeveloperTools.resetSymbolOffsets)
-                Button("zc.settings.developer.flex".loc, action: DeveloperTools.showFLEXOverlay)
+                Button("ryc0.settings.developer.resetSymbolOffsets".loc, action: DeveloperTools.resetSymbolOffsets)
+                Button("ryc0.settings.developer.flex".loc, action: DeveloperTools.showFLEXOverlay)
                     .disabled(!DeveloperTools.isFLEXAvailable)
             }
         }
-        .navigationTitle("zc.settings.developer".loc)
+        .navigationTitle("ryc0.settings.developer".loc)
         .navigationBarTitleDisplayMode(.inline)
         .alert(
             "lc.common.success".loc,
@@ -95,9 +95,9 @@ struct DeveloperSettingsView: View {
 
     private func exportMessage(for files: [String]) -> String {
         if files.isEmpty {
-            "zc.settings.developer.exportedNothing".loc
+            "ryc0.settings.developer.exportedNothing".loc
         } else {
-            "zc.settings.developer.exported %@".localizeWithFormat(files.formatted())
+            "ryc0.settings.developer.exported %@".localizeWithFormat(files.formatted())
         }
     }
 }

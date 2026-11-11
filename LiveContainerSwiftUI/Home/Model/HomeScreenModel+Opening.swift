@@ -6,7 +6,7 @@
 import SwiftUI
 
 /// Opening things from the Home Screen: apps, which zoom open from their icon
-/// before zContainer turns into them, Settings and an app's settings, which
+/// before ryC0 turns into them, Settings and an app's settings, which
 /// open over the Home Screen, and the actions in an app's long-press menu.
 extension HomeScreenModel {
     /// Opens what an icon stands for, unless edit mode is on or search covers
@@ -36,25 +36,44 @@ extension HomeScreenModel {
         }
     }
 
-    /// Launches an app through the coordinator. Just before zContainer turns
+    /// Launches an app through the coordinator. Just before ryC0 turns
     /// into the app, the app zooms open from its icon, or from the middle of
     /// the screen when its icon isn't showing. The page showing is saved
-    /// then, as zContainer quits on the way into the app and comes back to it.
+    /// then, as ryC0 quits on the way into the app and comes back to it.
     func launch(_ app: LCAppModel, from item: HomeItem? = nil) {
         let zoomItem = item ?? .app(app.homeKey ?? "")
         let frame = item.flatMap(iconFrame(of:)) ?? centeredIconFrame()
         let returnPage = page ?? 0
         // An app that needs JIT goes to it without the zoom, so its page is
-        // saved now. Any other app saves it as zContainer quits into it.
+        // saved now. Any other app saves it as ryC0 quits into it.
         if app.appInfo.isJITNeeded || app.appInfo.is32bit {
             HomeLayoutStorage.saveReturnPage(returnPage)
         }
         Task {
-            await coordinator.open(app) {
-                HomeLayoutStorage.saveReturnPage(returnPage)
+            await coordinator.open(app, zoomOrigin: frame.isEmpty ? nil : GuestZoomOrigin(iconFrame: frame)) {
+                self.prepareClassicReturn(page: returnPage, iconFrame: frame)
                 await self.playLaunchZoom(HomeLaunchZoom(item: zoomItem, app: app, iconFrame: frame))
             }
         }
+    }
+
+    func prepareClassicReturn(page: Int, iconFrame: CGRect? = nil) {
+        HomeLayoutStorage.saveReturnPage(page)
+        UserDefaults.standard.removeObject(forKey: "ryc0.homeReturnIcon")
+        guard let window = MainWindow.window, !window.bounds.isEmpty else { return }
+        if let iconFrame, !iconFrame.isEmpty {
+            let bounds = window.bounds
+            let normalized = CGRect(x: iconFrame.minX / bounds.width, y: iconFrame.minY / bounds.height,
+                                    width: iconFrame.width / bounds.width, height: iconFrame.height / bounds.height)
+            UserDefaults.standard.set(NSCoder.string(for: normalized), forKey: "ryc0.homeReturnIcon")
+        }
+        let format = UIGraphicsImageRendererFormat()
+        format.scale = 1
+        var drawn = false
+        let backdrop = UIGraphicsImageRenderer(bounds: window.bounds, format: format).image { _ in
+            drawn = window.drawHierarchy(in: window.bounds, afterScreenUpdates: false)
+        }
+        LCSharedUtils.setHomeReturnBackdrop(drawn ? backdrop : nil)
     }
 
     /// Plays the launch zoom and returns when it has filled the screen. The
@@ -65,7 +84,7 @@ extension HomeScreenModel {
             launchZoomContinuation = continuation
             launchZoom = zoom
         }
-        // zContainer quits as the app opens. If it's still here after a few
+        // ryC0 quits as the app opens. If it's still here after a few
         // seconds, the launch didn't happen, so the Home Screen comes back.
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(3))
@@ -96,9 +115,11 @@ extension HomeScreenModel {
         case .dock(let index)?:
             // At the size the dock draws it, which an iPad window too narrow
             // for a full dock shrinks. Elsewhere it is the pages' icon size.
-            let count = layout.dock.count
+            let page = HomeLayout.dockPage(for: index)
+            guard page == visibleDockPage else { return nil }
+            let count = layout.dockRange(on: page).count
             let size = metrics.dockIconSize(count: count)
-            let center = metrics.dockIconCenter(at: index, count: count)
+            let center = metrics.dockIconCenter(at: index % HomeLayout.dockIconsPerPage, count: count)
             return CGRect(x: center.x - size / 2, y: center.y - size / 2, width: size, height: size)
         case .folder(let id, let index)?:
             guard id == openFolderID, isFolderShown, index / HomeFolder.iconsPerPage == (folderPage ?? 0) else {
@@ -133,6 +154,9 @@ extension HomeScreenModel {
     /// has closed, and opens Files or the link question if the screen asked
     /// to add an app.
     func presentedScreenDidClose() {
+        if #available(iOS 18.0, *), presentedScreen == nil {
+            FullScreenGuestSession.shared.nativeCoverDidClose()
+        }
         isCoveredByScreen = false
         // Settings and app settings cover the Home Screen full screen, which
         // takes it off the window until now.
@@ -175,9 +199,6 @@ extension HomeScreenModel {
         }
     }
 
-    /// Opens an app with JIT, as Open with JIT in its long-press menu does:
-    /// zContainer asks the JIT tool set in Settings, Zeus unless another was
-    /// chosen, to give it JIT, then turns into the app.
     func openWithJIT(_ app: LCAppModel) {
         HomeLayoutStorage.saveReturnPage(page ?? 0)
         Task {

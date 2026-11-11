@@ -5,8 +5,6 @@
 
 /// How far an app in PendingInstallQueue has come.
 enum PendingInstallState: Equatable, Codable {
-    /// Its IPA is downloading, or for an app from Zeus, being copied out of
-    /// the app group and checked.
     case downloading
 
     /// Its IPA is on this iPhone, waiting for its turn, or for onboarding to

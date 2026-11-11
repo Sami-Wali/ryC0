@@ -237,7 +237,7 @@ enum HomeDesign {
 
     // MARK: Home button
 
-    /// The Home button's width and height, on zContainer's own screens and
+    /// The Home button's width and height, on ryC0's own screens and
     /// over apps alike (TweakLoader's LCHomeButtonView draws the same button).
     static let homeButtonSize = 52.0
     /// The rings on the Home button, from the outside in: each one's width and
@@ -358,6 +358,6 @@ enum HomeDesign {
     static let mergeHighlight = Animation.spring(duration: 0.3, bounce: 0.2)
     /// Edit mode, search and the page dots appearing or going away.
     static let modeChange = Animation.spring(duration: 0.3)
-    /// A tapped app zooming open before zContainer turns into it.
-    static let launchZoom = Animation.easeIn(duration: 0.26)
+    /// A tapped app zooming open before ryC0 turns into it.
+    static let launchZoom = Animation.spring(response: 0.42, dampingFraction: 0.88)
 }

@@ -5,21 +5,14 @@
 
 import SwiftUI
 
-/// What opens over the Home Screen: Settings and an app's settings, the
-/// question before an app is deleted, the install link question, Files, and
-/// Add to Home Screen's sheet, from an app's long-press menu.
-/// The Home Screen view applies it once, through `homePresentations(zoomNamespace:)`.
+/// The Home Screen's dialogs, file picker and Add to Home Screen sheet.
 struct HomePresentations: ViewModifier {
-    /// The namespace Settings and app settings zoom out of icons in.
-    let zoomNamespace: Namespace.ID
-
     @Environment(HomeScreenModel.self) private var model
 
     func body(content: Content) -> some View {
         @Bindable var model = model
 
         content
-            .modifier(HomeScreenPresentation(model: model, zoomNamespace: zoomNamespace))
             .alert(
                 model.removalTitle,
                 isPresented: Binding<Bool>.isPresented(for: $model.pendingRemoval),
@@ -28,7 +21,7 @@ struct HomePresentations: ViewModifier {
                 HomeRemovalActions(app: app)
             } message: { app in
                 if !app.uiContainers.isEmpty {
-                    Text("zc.home.deleteKeepDataMessage".loc)
+                    Text("ryc0.home.deleteKeepDataMessage".loc)
                 }
             }
             .alert("lc.appList.installFromUrl".loc, isPresented: $model.isEnteringInstallURL) {
@@ -53,9 +46,7 @@ struct HomePresentations: ViewModifier {
 }
 
 extension View {
-    /// Lets the Home Screen open its screens and questions over this view.
-    /// Apply it once, to the Home Screen view.
-    func homePresentations(zoomNamespace: Namespace.ID) -> some View {
-        modifier(HomePresentations(zoomNamespace: zoomNamespace))
+    func homePresentations() -> some View {
+        modifier(HomePresentations())
     }
 }

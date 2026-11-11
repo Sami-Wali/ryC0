@@ -16,10 +16,10 @@ struct HomeRemovalActions: View {
 
     var body: some View {
         if app.uiContainers.isEmpty {
-            Button("zc.home.deleteApp".loc, role: .destructive, action: deleteAppAndData)
+            Button("ryc0.home.deleteApp".loc, role: .destructive, action: deleteAppAndData)
         } else {
-            Button("zc.home.deleteAppAndData".loc, role: .destructive, action: deleteAppAndData)
-            Button("zc.home.deleteAppKeepData".loc, action: deleteAppKeepingData)
+            Button("ryc0.home.deleteAppAndData".loc, role: .destructive, action: deleteAppAndData)
+            Button("ryc0.home.deleteAppKeepData".loc, action: deleteAppKeepingData)
         }
         Button("lc.common.cancel".loc, role: .cancel) { }
     }

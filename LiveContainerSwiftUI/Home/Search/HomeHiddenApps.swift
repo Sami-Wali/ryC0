@@ -19,7 +19,7 @@ struct HomeHiddenApps: View {
     var body: some View {
         VStack(spacing: HomeDesign.searchSpacing) {
             Button(action: unlock) {
-                Label("zc.home.hidden".loc, systemImage: sharedModel.isHiddenAppUnlocked ? "eye.slash" : "lock.fill")
+                Label("ryc0.home.hidden".loc, systemImage: sharedModel.isHiddenAppUnlocked ? "eye.slash" : "lock.fill")
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, minHeight: HomeDesign.searchFieldHeight, alignment: .leading)
@@ -31,7 +31,7 @@ struct HomeHiddenApps: View {
 
             if sharedModel.isHiddenAppUnlocked {
                 if sharedModel.hiddenApps.isEmpty {
-                    Text("zc.home.noHiddenApps".loc)
+                    Text("ryc0.home.noHiddenApps".loc)
                         .foregroundStyle(.secondary)
                         .padding(.bottom, HomeDesign.searchPanelPadding)
                 } else {
@@ -43,7 +43,7 @@ struct HomeHiddenApps: View {
         .homeGlass(.rounded(HomeDesign.searchPanelCornerRadius))
     }
 
-    /// Asks for Face ID, which shows the hidden apps until zContainer quits.
+    /// Asks for Face ID, which shows the hidden apps until ryC0 quits.
     private func unlock() {
         Task {
             do {

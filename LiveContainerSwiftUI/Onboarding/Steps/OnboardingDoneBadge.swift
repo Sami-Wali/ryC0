@@ -5,7 +5,7 @@
 
 import SwiftUI
 
-/// The check in zContainer's pink on the corner of its icon at the end of
+/// The check in ryC0's pink on the corner of its icon at the end of
 /// onboarding, ringed in the page's color so it looks cut out of the icon.
 struct OnboardingDoneBadge: View {
     var body: some View {

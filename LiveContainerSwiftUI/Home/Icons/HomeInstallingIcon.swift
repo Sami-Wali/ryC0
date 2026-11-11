@@ -37,6 +37,6 @@ struct HomeInstallingIcon: View {
     }
 
     private var title: String {
-        download.isDownloading ? "lc.common.loading".loc : "zc.home.installing".loc
+        download.isDownloading ? "lc.common.loading".loc : "ryc0.home.installing".loc
     }
 }

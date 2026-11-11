@@ -6,28 +6,22 @@
 import Foundation
 
 /// Which addresses an install link may name. Any app or website can open an
-/// install link, so a link may name a web address, which zContainer downloads
+/// install link, so a link may name a web address, which ryC0 downloads
 /// into a folder of its own, but a file only when the person just shared it to
-/// zContainer: the file the share extension bookmarked before it opened the
+/// ryC0: the file the share extension bookmarked before it opened the
 /// link, or a file iOS put in the Inbox. Any other file, and any other scheme,
 /// is turned away, so a link can't install a file that just happens to be on
 /// this iPhone.
 enum InstallLinkPolicy {
-    /// Whether an install link's `url` value names something zContainer may
+    /// Whether an install link's `url` value names something ryC0 may
     /// install.
-    static func accepts(linkAddress: String) -> Bool {
-        guard let url = URL(string: linkAddress), let scheme = url.scheme?.lowercased() else {
-            return false
-        }
-        switch scheme {
-        case "http", "https":
+    static func accepts(installSource url: URL) -> Bool {
+        // The shared link parser already checks the scheme and web host.
+        guard url.isFileURL else {
             return true
-        case "file":
-            let inbox = URL.documentsDirectory.appending(path: "Inbox", directoryHint: .isDirectory)
-            return accepts(file: url, sharedFile: sharedFile(), inbox: inbox)
-        default:
-            return false
         }
+        let inbox = URL.documentsDirectory.appending(path: "Inbox", directoryHint: .isDirectory)
+        return accepts(file: url, sharedFile: sharedFile(), inbox: inbox)
     }
 
     /// Whether a file URL names `sharedFile` or a file directly in `inbox`.
@@ -43,7 +37,7 @@ enum InstallLinkPolicy {
     }
 
     /// The share extension's bookmark, and the file it finds, when that's
-    /// `file`. An IPA shared to zContainer is read through it. Nil when
+    /// `file`. An IPA shared to ryC0 is read through it. Nil when
     /// there's none, or when it finds another file, such as one shared
     /// earlier, since only a guest app opening a shared file clears it.
     static func sharedFileBookmark(for file: URL) -> (bookmark: Data, url: URL)? {
@@ -56,7 +50,7 @@ enum InstallLinkPolicy {
         return (bookmark, sharedFile)
     }
 
-    /// The file the share extension bookmarked for zContainer to install, as
+    /// The file the share extension bookmarked for ryC0 to install, as
     /// `installLocalIpa(_:policy:)` finds it, or nil when there's none.
     private static func sharedFile() -> URL? {
         guard let bookmark = LCUtils.appGroupUserDefault.data(forKey: "LCLaunchExtensionFileBookmark") else {
