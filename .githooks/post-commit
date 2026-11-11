@@ -1,0 +1,10 @@
+#!/bin/sh
+set -u
+[ "${RYC0_SKIP_NIGHTLY:-0}" = 1 ] && exit 0
+export PATH="/opt/homebrew/bin:/usr/local/bin:$HOME/.cargo/bin:$PATH"
+ryc0_root=$(git rev-parse --show-toplevel) || exit 0
+ryc0_node=$(git config --get ryc0.nodePath) || ryc0_node=node
+"$ryc0_node" "$ryc0_root/Scripts/nightly.mjs" publish --auto || {
+    echo 'Commit saved. Nightly failed; retry with: node Scripts/nightly.mjs publish' >&2
+    exit 1
+}
