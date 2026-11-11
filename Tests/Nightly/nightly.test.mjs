@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { run, snapshotSource } from '../../Scripts/nightly.mjs';
+import { run, snapshotSource, withNightlyLock } from '../../Scripts/nightly.mjs';
 
 async function repository(directory) {
   await mkdir(directory, { recursive: true });
@@ -55,6 +55,34 @@ test('submodules use the pinned commit instead of dirty working files', async ()
     assert.equal(await readFile(path.join(snapshot, 'library/library.txt'), 'utf8'), 'pinned dependency');
     assert.equal(await readFile(path.join(source, 'library/library.txt'), 'utf8'), 'uncommitted dependency');
   } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});
+
+test('overlapping nightly requests wait instead of losing the next commit', async () => {
+  const temporary = await mkdtemp(path.join(os.tmpdir(), 'ryc0-nightly-lock-'));
+  const events = [];
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let started;
+  const firstStarted = new Promise((resolve) => { started = resolve; });
+  try {
+    const first = withNightlyLock(temporary, async () => {
+      events.push('first-start');
+      started();
+      await gate;
+      events.push('first-end');
+    });
+    await firstStarted;
+    const second = withNightlyLock(temporary, async () => { events.push('second'); });
+    await new Promise((resolve) => setTimeout(resolve, 25));
+    assert.deepEqual(events, ['first-start']);
+    release();
+    await Promise.all([first, second]);
+    assert.deepEqual(events, ['first-start', 'first-end', 'second']);
+    await assert.rejects(readFile(path.join(temporary, 'publish.lock')), { code: 'ENOENT' });
+  } finally {
+    release();
     await rm(temporary, { recursive: true, force: true });
   }
 });

@@ -46,24 +46,39 @@ export async function snapshotSource(source, destination, commit) {
   }
 }
 
-async function withLock(action) {
-  await mkdir(output, { recursive: true });
-  const name = path.join(output, 'publish.lock');
+export async function withNightlyLock(directory, action, waiting = false) {
+  await mkdir(directory, { recursive: true });
+  const name = path.join(directory, 'publish.lock');
   let lock;
   try {
     lock = await open(name, 'wx');
   } catch (error) {
     if (error.code !== 'EEXIST') throw error;
-    const owner = Number(await readFile(name, 'utf8'));
-    if (!Number.isInteger(owner) || owner < 1) throw new Error('A nightly build is starting. Retry when it finishes.');
+    let owner;
     try {
-      process.kill(owner, 0);
-    } catch (probe) {
-      if (probe.code !== 'ESRCH') throw probe;
-      await rm(name);
-      return withLock(action);
+      owner = Number(await readFile(name, 'utf8'));
+    } catch (readError) {
+      if (readError.code === 'ENOENT') return withNightlyLock(directory, action, waiting);
+      throw readError;
     }
-    throw new Error(`A nightly build is already running (process ${owner}).`);
+    if (Number.isInteger(owner) && owner > 0) {
+      try {
+        process.kill(owner, 0);
+      } catch (probe) {
+        if (probe.code !== 'ESRCH') throw probe;
+        await rm(name, { force: true });
+        return withNightlyLock(directory, action, waiting);
+      }
+    } else {
+      const details = await stat(name).catch(() => null);
+      if (details && Date.now() - details.mtimeMs > 5000) {
+        await rm(name, { force: true });
+        return withNightlyLock(directory, action, waiting);
+      }
+    }
+    if (!waiting) console.log('Another local Nightly is building; this commit is queued.');
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return withNightlyLock(directory, action, true);
   }
   try {
     await lock.writeFile(String(process.pid));
@@ -99,7 +114,7 @@ async function publish(auto) {
   const tag = `nightly-${date}-${commit.slice(0, 8)}`;
   const directory = path.join(output, tag);
 
-  return withLock(async () => {
+  return withNightlyLock(output, async () => {
     await run('gh', ['auth', 'status']);
     const existing = await run('gh', ['release', 'view', tag, '--repo', repository, '--json', 'url,assets'], { quiet: true }).catch(() => '');
     if (existing && JSON.parse(existing).assets.some((asset) => asset.name.endsWith('.ipa'))) {
@@ -137,6 +152,7 @@ async function publish(auto) {
     // Publishing the exact SHA prevents edits made during the build from
     // changing what is uploaded, and uses a normal, non-forced branch push.
     await run('git', ['push', '--set-upstream', 'origin', `${commit}:refs/heads/${branch}`]);
+    await run('git', ['branch', '--set-upstream-to', `origin/${branch}`, branch]);
     const notes = path.join(directory, 'release-notes.md');
     await writeFile(notes, `Nightly built locally on macOS.\n\nCommit: ${commit}\nBranch: ${branch}\nBuild: ${build}\n\nSign the IPA with your sideloading tool before installing.\n`);
     let url;
