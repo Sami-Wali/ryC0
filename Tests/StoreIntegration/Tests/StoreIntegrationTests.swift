@@ -4,6 +4,76 @@ import XCTest
 @testable import LiveContainerSwiftUI
 
 @MainActor final class StoreIntegrationTests: XCTestCase {
+    func testGuestIconZoomRendersIntermediateFramesBeforeHandoff() async throws {
+        let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+        let window = UIWindow(windowScene: scene)
+        let root = UIViewController()
+        window.rootViewController = root
+        window.makeKeyAndVisible()
+        defer { window.isHidden = true; window.rootViewController = nil }
+        let bounds = root.view.bounds
+        let surface = GuestZoomSurface(frame: bounds)
+        root.view.addSubview(surface)
+        let guest = UIView(frame: bounds)
+        surface.content.addSubview(guest)
+        surface.holdOpeningSnapshot(UIView())
+        let icon = CGRect(x: 30, y: 120, width: 60, height: 60)
+        let finished = expectation(description: "The icon expanded before the cover handoff")
+        var handedOff = false
+        surface.open(from: GuestZoomOrigin(iconFrame: icon), in: bounds) {
+            handedOff = true
+            finished.fulfill()
+        }
+        try await Task.sleep(for: .milliseconds(90))
+        let intermediate = try XCTUnwrap(surface.layer.presentation())
+        XCTAssertGreaterThan(intermediate.bounds.width, icon.width)
+        XCTAssertLessThan(intermediate.bounds.width, bounds.width * 0.99,
+                          "Opening must draw intermediate sizes, not jump directly to full screen")
+        XCTAssertEqual(guest.bounds.size, bounds.size, "The guest must not re-layout for each animation frame")
+        XCTAssertFalse(handedOff)
+        await fulfillment(of: [finished], timeout: 2)
+        XCTAssertEqual(surface.bounds, bounds)
+        surface.releaseOpeningSnapshot(animated: false)
+        XCTAssertFalse(guest.isHidden)
+    }
+
+    func testGuestOpeningBitmapRevealsLiveSceneAndRemovesTouchBlocker() async throws {
+        let surface = GuestZoomSurface(frame: CGRect(x: 0, y: 0, width: 402, height: 874))
+        let guest = UIView(frame: surface.content.bounds)
+        surface.content.addSubview(guest)
+        let bitmap = UIImageView(image: UIImage(systemName: "app.fill"))
+        surface.holdOpeningSnapshot(bitmap)
+        XCTAssertFalse(guest.isHidden, "Keep the remote scene rendering beneath the opaque bitmap")
+        XCTAssertEqual(bitmap.frame, guest.frame)
+        XCTAssertTrue(surface.content.hitTest(CGPoint(x: 100, y: 100), with: nil) === bitmap)
+
+        surface.releaseOpeningSnapshot(animated: true)
+        XCTAssertFalse(guest.isHidden, "Reveal the live scene before fading the bitmap")
+        try await Task.sleep(for: .milliseconds(250))
+        XCTAssertNil(bitmap.superview, "A completed opening must leave no transparent touch blocker")
+        XCTAssertTrue(surface.content.hitTest(CGPoint(x: 100, y: 100), with: nil) === guest)
+    }
+
+    func testReplacingAndCancellingGuestOpeningRemovesAllTouchBlockers() {
+        let surface = GuestZoomSurface(frame: CGRect(x: 0, y: 0, width: 402, height: 874))
+        let first = UIView(frame: surface.content.bounds)
+        let second = UIView(frame: surface.content.bounds)
+        surface.content.addSubview(first)
+        surface.content.addSubview(second)
+        let oldBitmap = UIView(), newBitmap = UIView()
+        surface.holdOpeningSnapshot(oldBitmap)
+        surface.holdOpeningSnapshot(newBitmap)
+        XCTAssertFalse(first.isHidden)
+        XCTAssertNil(oldBitmap.superview)
+        XCTAssertFalse(second.isHidden)
+        XCTAssertTrue(surface.content.hitTest(CGPoint(x: 100, y: 100), with: nil) === newBitmap)
+        surface.releaseOpeningSnapshot(animated: false)
+        surface.releaseOpeningSnapshot(animated: false)
+        XCTAssertFalse(second.isHidden)
+        XCTAssertNil(newBitmap.superview)
+        XCTAssertTrue(surface.content.hitTest(CGPoint(x: 100, y: 100), with: nil) === second)
+    }
+
     func testClockSingleTapAndDoubleTapAreExclusive() async throws {
         let clock = RYClockTapAction()
         var home = 0, switcher = 0

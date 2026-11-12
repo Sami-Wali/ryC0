@@ -38,21 +38,68 @@ static NSDictionary *retrievedAppInfo;
 extern int LiveContainerMain(int argc, char *argv[]);
 static char **_envp, **_apple = NULL;
 
+static UIImage *GuestWindowPreview(UIWindow *window, BOOL afterScreenUpdates) {
+    if (!window || CGRectIsEmpty(window.bounds)) return nil;
+    UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
+    CGFloat longestSide = MAX(CGRectGetWidth(window.bounds), CGRectGetHeight(window.bounds));
+    format.scale = MIN(0.69 * MAX(1, window.traitCollection.displayScale), 2048.0 / longestSide);
+    format.preferredRange = UIGraphicsImageRendererFormatRangeStandard;
+    format.opaque = YES;
+    UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithBounds:window.bounds format:format];
+    __block BOOL drawn = NO;
+    UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
+        drawn = [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:afterScreenUpdates];
+    }];
+    return drawn ? image : nil;
+}
+
+// A key window is not necessarily rendered yet. Wait for display opportunities
+// after its initial layout, rather than racing startup with a fixed 50 ms timer.
+@interface RYGuestFirstFrame : NSObject
+@property(nonatomic) CADisplayLink *displayLink;
+@property(nonatomic, weak) UIWindow *window;
+@property(nonatomic) NSString *requestID;
+@property(nonatomic) NSUInteger ticks;
+@end
+
+@implementation RYGuestFirstFrame
+- (void)displayDidRefresh:(CADisplayLink *)link {
+    UIWindow *window = self.window;
+    if (!window) { self.displayLink = nil; [link invalidate]; return; }
+    if (window.hidden || !window.windowScene) return;
+    if (++self.ticks < 2) return;
+    UIImage *image = GuestWindowPreview(window, YES);
+    if (!image) return;
+    NSURL *file = [LCSharedUtils guestPreviewTransferURL:self.requestID];
+    NSString *channel = [NSString stringWithFormat:@"com.ry0.ryC0.preview.%@.firstFrame", self.requestID];
+    self.displayLink = nil;
+    [link invalidate];
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        if (image && file) {
+            [NSFileManager.defaultManager createDirectoryAtURL:file.URLByDeletingLastPathComponent
+                withIntermediateDirectories:YES attributes:nil error:nil];
+            [UIImageJPEGRepresentation(image, 0.94) writeToURL:file
+                options:NSDataWritingAtomic | NSDataWritingFileProtectionComplete error:nil];
+        }
+        notify_post(channel.UTF8String);
+    });
+}
+@end
+
 static void NotifyHostAfterFirstGuestFrame(NSString *requestID) {
     if (!requestID) return;
-    NSString *channel = [NSString stringWithFormat:@"com.ry0.ryC0.preview.%@.firstFrame", requestID];
     NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
     __block NSMutableArray *observers = [NSMutableArray array];
     __block BOOL scheduled = NO;
     void (^checkWindows)(NSNotification *) = ^(NSNotification *note) {
         if (scheduled) return;
-        BOOL ready = NO;
+        UIWindow *ready = nil;
         NSArray<UIWindow *> *windows = nil;
         if ([note.object isKindOfClass:UIWindowScene.class]) windows = ((UIWindowScene *)note.object).windows;
         else if ([note.object isKindOfClass:UIWindow.class] && ((UIWindow *)note.object).windowScene) windows = @[note.object];
         for (UIWindow *window in windows) {
             if (!window.hidden && window.rootViewController && window.windowLevel == UIWindowLevelNormal && !CGRectIsEmpty(window.bounds)) {
-                ready = YES;
+                ready = window;
                 break;
             }
         }
@@ -60,10 +107,11 @@ static void NotifyHostAfterFirstGuestFrame(NSString *requestID) {
         scheduled = YES;
         for (id observer in observers) [center removeObserver:observer];
         observers = nil;
-        // Let the guest commit its first frame before the host zooms it open.
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 50 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
-            notify_post(channel.UTF8String);
-        });
+        RYGuestFirstFrame *reporter = [RYGuestFirstFrame new];
+        reporter.window = ready;
+        reporter.requestID = requestID;
+        reporter.displayLink = [CADisplayLink displayLinkWithTarget:reporter selector:@selector(displayDidRefresh:)];
+        [reporter.displayLink addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
     };
     // A guest can make its window key before UIKit attaches it to a scene.
     // Check visibility and scene activation too, so it doesn't hit the fallback.
@@ -91,19 +139,8 @@ static void ListenForGuestPreviews(NSString *requestID) {
                 if (window) break;
             }
         }
-        if (!window || CGRectIsEmpty(window.bounds)) return;
-        UIGraphicsImageRendererFormat *format = [UIGraphicsImageRendererFormat defaultFormat];
-        CGFloat longestSide = MAX(CGRectGetWidth(window.bounds), CGRectGetHeight(window.bounds));
-        // Render near the card's display size, with a pixel cap for large iPad windows.
-        format.scale = MIN(0.69 * MAX(1, window.traitCollection.displayScale), 2048.0 / longestSide);
-        format.preferredRange = UIGraphicsImageRendererFormatRangeStandard;
-        format.opaque = YES;
-        UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithBounds:window.bounds format:format];
-        __block BOOL drawn = NO;
-        UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
-            drawn = [window drawViewHierarchyInRect:window.bounds afterScreenUpdates:NO];
-        }];
-        if (!drawn) return;
+        UIImage *image = GuestWindowPreview(window, NO);
+        if (!image) return;
         dispatch_async(writes, ^{
             [NSFileManager.defaultManager createDirectoryAtURL:file.URLByDeletingLastPathComponent
                 withIntermediateDirectories:YES attributes:nil error:nil];

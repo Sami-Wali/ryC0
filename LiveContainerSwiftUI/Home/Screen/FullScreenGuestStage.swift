@@ -1,9 +1,28 @@
 import SwiftUI
 import UIKit
 
+#if DEBUG
+private enum GuestLaunchDiagnostics {
+    static let writes = DispatchQueue(label: "com.ry0.ryC0.launch-trace")
+    static var ended = false
+}
+#endif
+
 private func traceGuestLaunch(_ event: String) {
 #if DEBUG
-    NSLog("[ryC0 launch] %.3f %@", CACurrentMediaTime(), event)
+    let line = String(format: "[ryC0 launch] %.3f %@\n", CACurrentMediaTime(), event)
+    NSLog("%@", line)
+    guard ProcessInfo.processInfo.arguments.contains("--ryc0-debug-keep-awake") else { return }
+    GuestLaunchDiagnostics.writes.async {
+        let file = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("ryc0-launch.log")
+        if !FileManager.default.fileExists(atPath: file.path) {
+            FileManager.default.createFile(atPath: file.path, contents: nil)
+        }
+        guard let handle = try? FileHandle(forWritingTo: file) else { return }
+        defer { try? handle.close() }
+        _ = try? handle.seekToEnd()
+        try? handle.write(contentsOf: Data(line.utf8))
+    }
 #endif
 }
 
@@ -131,15 +150,21 @@ final class GuestStageController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("--ryc0-debug-keep-awake") {
+        if ProcessInfo.processInfo.arguments.contains("--ryc0-debug-keep-awake"), !GuestLaunchDiagnostics.ended {
             UIApplication.shared.isIdleTimerDisabled = true
             if !Self.debugControlsInstalled {
                 Self.debugControlsInstalled = true
-                for name in ["com.ry0.ryC0.debug.home", "com.ry0.ryC0.debug.switcher"] {
+                for name in ["com.ry0.ryC0.debug.home", "com.ry0.ryC0.debug.switcher", "com.ry0.ryC0.debug.end"] {
                     CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), nil, { _, _, name, _, _ in
-                        let switcher = (name?.rawValue as String?)?.hasSuffix(".switcher") == true
+                        let command = name?.rawValue as String?
                         DispatchQueue.main.async {
-                            FullScreenGuestSession.shared.returnHome(openSwitcher: switcher)
+                            if command?.hasSuffix(".end") == true {
+                                GuestLaunchDiagnostics.ended = true
+                                UIApplication.shared.isIdleTimerDisabled = false
+                                try? FileManager.default.removeItem(atPath: NSTemporaryDirectory() + "ryc0-first-frame.jpg")
+                            } else if !GuestLaunchDiagnostics.ended {
+                                FullScreenGuestSession.shared.returnHome(openSwitcher: command?.hasSuffix(".switcher") == true)
+                            }
                         }
                     }, name as CFString, nil, .deliverImmediately)
                 }
@@ -203,6 +228,8 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
     private var pendingPresentation: Task<Void, Never>?
     private var openingSnapshotTimeout: Task<Void, Never>?
     private var nativeCoverIsVisible = false
+    private var hasPresentedGuest = false
+    private var openingZoom = false
     private var presentationID = UUID()
     private var returning = false
     private var reopensAfterReturn = false
@@ -241,7 +268,7 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
         }
 
         starting = true
-        traceGuestLaunch("starting guest preparation")
+        traceGuestLaunch("starting guest preparation: \(bundle)")
         defer { starting = false }
         if let previous = guest { removeGuest(previous) }
         if let previous = retiringGuest {
@@ -267,6 +294,7 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
             }
 
             guest = controller
+            hasPresentedGuest = false
             self.container = container
             MultitaskManager.shared.fullScreenContainer = container
 
@@ -308,24 +336,42 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
         traceGuestLaunch("presenting guest")
         launchOrigin = nil
         if #available(iOS 18.0, *), canShowPreview(for: guest.bundleId) {
-            let image = container.flatMap { previews[$0] }
-                ?? guest.bundleId.flatMap { MainWindow.cachedSwitcherPreview(for: $0) }
+            // A cold launch must never zoom an old, ready screen into a new
+            // loading screen. Only a resumed process can reuse its last preview.
+            let image = hasPresentedGuest
+                ? container.flatMap { previews[$0] }
+                : guest.takeHostedGuestFirstFrameImage()
             let snapshot: UIView? = image.map { UIImageView(image: $0) as UIView }
-                ?? (guest.hostedGuestHasDrawn ? guest.view.snapshotView(afterScreenUpdates: false) : nil)
             if let snapshot { surface.holdOpeningSnapshot(snapshot) }
+            traceGuestLaunch("opening bitmap ready: \(image != nil), resumed: \(hasPresentedGuest)")
         }
+        hasPresentedGuest = true
         configureReturnControl(for: guest, on: surface)
         if #available(iOS 18.0, *) {
             guard let bundle = guest.bundleId else { return }
             returning = false
             isGuestVisible = true
             guest.setHostedGuestVisible(true)
-            if origin?.isSwitcher == true {
+            let presentCover = {
                 var transaction = Transaction(animation: nil)
                 transaction.disablesAnimations = true
                 withTransaction(transaction) { stage.presentGuest?(bundle) }
-            } else {
-                stage.presentGuest?(bundle)
+            }
+            if origin?.isSwitcher == true { presentCover(); return }
+
+            // SwiftUI can lose the matched icon while startup updates Home.
+            // Own the opening zoom; hand the fully expanded surface to the
+            // native cover afterward, preserving its normal closing gesture.
+            mount(guest, surface: surface, in: stage)
+            let id = UUID()
+            presentationID = id
+            openingZoom = true
+            traceGuestLaunch("icon zoom started")
+            surface.open(from: origin ?? stage.homeOrigin?(bundle), in: stage.view.bounds) { [weak self, weak guest] in
+                guard let self, self.presentationID == id, let guest, self.guest === guest else { return }
+                self.openingZoom = false
+                traceGuestLaunch("icon zoom finished")
+                presentCover()
             }
             return
         }
@@ -418,6 +464,7 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
     func nativeCoverDidClose() {
         guard isGuestVisible, let guest, let surface else { return }
         nativeCoverIsVisible = false
+        openingZoom = false
         openingSnapshotTimeout?.cancel()
         openingSnapshotTimeout = nil
         surface.releaseOpeningSnapshot(animated: false)
@@ -445,6 +492,8 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
 
     private func removeGuest(_ controller: AppSceneViewController, terminate: Bool = true) {
         guard guest === controller else { return }
+        openingZoom = false
+        presentationID = UUID()
         pendingPresentation?.cancel()
         pendingPresentation = nil
         openingSnapshotTimeout?.cancel()
@@ -497,12 +546,15 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
         traceGuestLaunch("guest process initialized")
         if #available(iOS 18.0, *), !vc.hostedGuestHasDrawn {
             // JIT may need the PID before the guest can draw. Keep Home
-            // visible until the guest has a frame or the short wait expires.
+            // visible until this launch has a frame. A timeout is a launch
+            // failure, never permission to zoom an empty remote surface open.
             firstFrameTimeout = Task { [weak self, weak vc] in
-                try? await Task.sleep(for: .milliseconds(300))
-                guard !Task.isCancelled, let vc else { return }
-                traceGuestLaunch("first frame fallback")
-                self?.appSceneVCGuestDidDraw(vc)
+                try? await Task.sleep(for: .seconds(30))
+                guard !Task.isCancelled, let self, let vc, self.guest === vc else { return }
+                traceGuestLaunch("first frame timed out")
+                self.firstFrameTimeout = nil
+                MainWindow.guestErrors.send("The app did not draw its first frame. Try opening it again.")
+                self.removeGuest(vc)
             }
         } else {
             showGuest(from: launchOrigin)
@@ -652,6 +704,19 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
     func returnHome(openSwitcher: Bool) {
         clockTap.cancel()
         if #available(iOS 18.0, *) {
+            if openingZoom, let guest, let surface {
+                presentationID = UUID()
+                openingZoom = false
+                surface.layer.removeAllAnimations()
+                surface.content.layer.removeAllAnimations()
+                surface.isHidden = true
+                surface.releaseOpeningSnapshot(animated: false)
+                guest.setHostedGuestVisible(false)
+                unmount(guest, surface: surface)
+                isGuestVisible = false
+                MainWindow.homeRequests.send(openSwitcher)
+                return
+            }
             if firstFrameTimeout != nil, let guest, let surface {
                 firstFrameTimeout?.cancel()
                 firstFrameTimeout = nil
@@ -787,11 +852,11 @@ private struct GuestFloatingHomeButton: View {
 
 /// Keep the hosted scene at its native size while the visible viewport zooms.
 /// The contents keep their aspect ratio as the rounded mask shrinks to an icon.
-private final class GuestZoomSurface: UIView {
+final class GuestZoomSurface: UIView {
     let content = UIView()
     weak var returnControl: UIView?
     var returnMode: LCGuestHomeControl?
-    var floatingControl: UIHostingController<GuestFloatingHomeButton>?
+    fileprivate var floatingControl: UIHostingController<GuestFloatingHomeButton>?
     private var isDraggingControl = false
     private var openingSnapshot: UIView?
 
@@ -808,6 +873,34 @@ private final class GuestZoomSurface: UIView {
 
     required init?(coder: NSCoder) { nil }
 
+    func open(from proposedOrigin: GuestZoomOrigin?, in fullBounds: CGRect, completion: @escaping () -> Void) {
+        let origin = UIAccessibility.isReduceMotionEnabled ? nil
+            : proposedOrigin.flatMap { fullBounds.intersects($0.frame) ? $0 : nil }
+        UIView.performWithoutAnimation {
+            reset(in: fullBounds)
+            autoresizesSubviews = false
+            move(to: origin, in: fullBounds)
+            alpha = origin == nil ? 0 : 1
+            returnControl?.alpha = 0
+            isHidden = false
+            isUserInteractionEnabled = true
+            accessibilityElementsHidden = false
+            accessibilityViewIsModal = true
+            layoutIfNeeded()
+        }
+        UIView.animate(withDuration: origin == nil ? 0.16 : 0.42, delay: 0,
+                       usingSpringWithDamping: 0.88, initialSpringVelocity: 0,
+                       options: [.beginFromCurrentState, .allowUserInteraction]) {
+            self.alpha = 1
+            self.returnControl?.alpha = 1
+            self.move(to: nil, in: fullBounds)
+        } completion: { finished in
+            guard finished else { return }
+            self.reset(in: fullBounds)
+            completion()
+        }
+    }
+
     func holdOpeningSnapshot(_ snapshot: UIView) {
         releaseOpeningSnapshot(animated: false)
         snapshot.frame = content.bounds
@@ -817,6 +910,9 @@ private final class GuestZoomSurface: UIView {
         if let image = snapshot as? UIImageView { image.contentMode = .scaleAspectFill; image.clipsToBounds = true }
         content.addSubview(snapshot)
         openingSnapshot = snapshot
+        // The opaque bitmap keeps the zoom stable. Leave the live scene
+        // visible underneath so reparenting doesn't suspend its remote surface
+        // and flash black when the cover takes over.
     }
 
     func releaseOpeningSnapshot(animated: Bool) {
@@ -833,7 +929,7 @@ private final class GuestZoomSurface: UIView {
         }
     }
 
-    func addFloatingControl(_ controller: UIHostingController<GuestFloatingHomeButton>, to parent: UIViewController?) {
+    fileprivate func addFloatingControl(_ controller: UIHostingController<GuestFloatingHomeButton>, to parent: UIViewController?) {
         floatingControl = controller
         let size = HomeDesign.homeButtonSize
         let control = controller.view!

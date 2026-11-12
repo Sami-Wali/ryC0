@@ -34,6 +34,7 @@
 @property(nonatomic) int firstFrameNotification;
 @property(nonatomic) int homeSwipeNotification;
 @property(nonatomic, readwrite) BOOL hostedGuestHasDrawn;
+@property(nonatomic) UIImage *hostedGuestFirstFrameImage;
 @property(nonatomic, copy) void (^previewCompletion)(UIImage *);
 @end
 
@@ -158,15 +159,29 @@
         if (@available(iOS 18.0, *)) {
             NSString *channel = [NSString stringWithFormat:@"com.ry0.ryC0.preview.%@.firstFrame", self.previewRequestID];
             int token;
-            if (notify_register_dispatch(channel.UTF8String, &token, dispatch_get_main_queue(), ^(int notification) {
-                AppSceneViewController *controller = weakSelf;
-                if (!controller || controller.isAppTerminationCleanUpCalled) return;
+            NSURL *frameURL = [LCSharedUtils guestPreviewTransferURL:self.previewRequestID];
+            if (notify_register_dispatch(channel.UTF8String, &token, dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^(int notification) {
                 notify_cancel(notification);
-                controller.firstFrameNotification = -1;
-                controller.hostedGuestHasDrawn = YES;
-                if ([controller.delegate respondsToSelector:@selector(appSceneVCGuestDidDraw:)]) {
-                    [controller.delegate appSceneVCGuestDidDraw:controller];
+                UIImage *source = [UIImage imageWithContentsOfFile:frameURL.path];
+                UIImage *image = [source imageByPreparingForDisplay] ?: source;
+#if DEBUG
+                if ([NSProcessInfo.processInfo.arguments containsObject:@"--ryc0-debug-keep-awake"]) {
+                    NSURL *diagnostic = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:@"ryc0-first-frame.jpg"]];
+                    [NSFileManager.defaultManager removeItemAtURL:diagnostic error:nil];
+                    [NSFileManager.defaultManager copyItemAtURL:frameURL toURL:diagnostic error:nil];
                 }
+#endif
+                [NSFileManager.defaultManager removeItemAtURL:frameURL error:nil];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    AppSceneViewController *controller = weakSelf;
+                    if (!controller || controller.isAppTerminationCleanUpCalled) return;
+                    controller.firstFrameNotification = -1;
+                    controller.hostedGuestFirstFrameImage = image;
+                    controller.hostedGuestHasDrawn = YES;
+                    if ([controller.delegate respondsToSelector:@selector(appSceneVCGuestDidDraw:)]) {
+                        [controller.delegate appSceneVCGuestDidDraw:controller];
+                    }
+                });
             }) == NOTIFY_STATUS_OK) {
                 self.firstFrameNotification = token;
             }
@@ -376,6 +391,12 @@
     }
 }
 
+- (UIImage *)takeHostedGuestFirstFrameImage {
+    UIImage *image = self.hostedGuestFirstFrameImage;
+    self.hostedGuestFirstFrameImage = nil;
+    return image;
+}
+
 - (void)requestHostedGuestPreview:(void (^)(UIImage *))completion {
     if (!self.previewRequestID) return;
     NSURL *url = [LCSharedUtils guestPreviewTransferURL:self.previewRequestID];
@@ -532,6 +553,9 @@
         notify_cancel(self.previewNotification);
         self.previewNotification = -1;
         self.previewCompletion = nil;
+    }
+    self.hostedGuestFirstFrameImage = nil;
+    if (self.previewRequestID) {
         NSURL *preview = [LCSharedUtils guestPreviewTransferURL:self.previewRequestID];
         if (preview) [NSFileManager.defaultManager removeItemAtURL:preview error:nil];
     }
