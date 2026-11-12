@@ -99,13 +99,14 @@ struct HomeScreenView: View {
         .onChange(of: router.opensAppSwitcher, initial: true) {
             if router.opensAppSwitcher && MainWindow.isMain(sceneDelegate.window?.windowScene) {
                 router.opensAppSwitcher = false
-                model.showsAppSwitcher = !onboarding.isPresented
+                if !onboarding.isPresented { model.showAppSwitcher(from: .app) }
             }
         }
         .onReceive(MainWindow.homeRequests) { openingSwitcher in
             guard MainWindow.isMain(sceneDelegate.window?.windowScene) else { return }
             setNotifications(false)
-            model.showsAppSwitcher = openingSwitcher && !onboarding.isPresented
+            if openingSwitcher && !onboarding.isPresented { model.showAppSwitcher(from: .app) }
+            else { model.showsAppSwitcher = false }
             model.showHomeScreen()
         }
         .onReceive(model.appsPublisher, perform: model.syncApps)

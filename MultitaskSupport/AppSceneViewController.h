@@ -33,6 +33,7 @@ API_AVAILABLE(ios(16.0))
 @property(nonatomic, readonly) NSTimeInterval terminationGracePeriod;
 @property(nonatomic, readonly) bool isNativeWindow;
 @property(nonatomic, readonly) BOOL hostedGuestHasDrawn;
+- (nullable UIImage *)takeHostedGuestFirstFrameImage;
 @property(nonatomic) BOOL shouldIgnoreSceneUpdates, shouldSkipDebounceOnce;
 @property(nonatomic) CGFloat scaleRatio;
 @property(nonatomic) UIView* contentView;

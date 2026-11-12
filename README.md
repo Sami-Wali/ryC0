@@ -46,6 +46,38 @@ The switcher can resume or close running windows. Regular guests are relaunched 
 
 ## Building
 
+### Local Nightly releases
+
+Nightly builds run on your Mac. GitHub Actions builds are disabled; GitHub stores
+the source code and the resulting IPA releases.
+
+With Xcode, Rust, Node.js, Python 3, and the authenticated GitHub CLI installed:
+
+```sh
+node Scripts/nightly.mjs install
+```
+
+Every local commit or successful local merge then builds a Nightly, pushes the
+committed source to its branch, and uploads the IPA as a GitHub prerelease.
+Each release has its own `nightly-<date>-<commit>` tag and build number. After the
+uploaded IPA's size and SHA-256 match the local file, older Nightly releases,
+their tags, and old local Nightly build folders are removed. Only the latest
+published Nightly is retained; stable releases are preserved. Building
+uses an isolated checkout of that exact commit, so unsaved or uncommitted work
+does not enter the release. The Mac must be running for these local hooks to run.
+
+To retry a failed build or publish the current commit manually:
+
+```sh
+node Scripts/nightly.mjs publish
+```
+
+IPAs, build logs, and release records are kept under `build/nightly/`. Sign an IPA
+with your sideloading tool before installing it. Changes made on GitHub get a
+local build when pulled onto this Mac or published with the command above.
+
+### Manual builds
+
 The archive path validator uses Rust. Run `rustup target add aarch64-apple-ios aarch64-apple-ios-sim` for arm64 device and Simulator builds. Intel Simulator and Mac Catalyst builds need their corresponding Rust targets.
 
 With Node.js and Xcode installed on macOS:

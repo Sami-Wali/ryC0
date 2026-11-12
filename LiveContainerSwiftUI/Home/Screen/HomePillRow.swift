@@ -27,7 +27,7 @@ struct HomePillRow: View {
                 .accessibilityHidden(true)
             pill
             Button {
-                model.showsAppSwitcher = true
+                model.showAppSwitcher(from: .home)
             } label: {
                 Image(systemName: "rectangle.stack")
                     .font(.system(size: 15, weight: .semibold))

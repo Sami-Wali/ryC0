@@ -19,18 +19,44 @@ import UIKit
     static let guestErrors = PassthroughSubject<String, Never>()
     static private(set) var switcherPreviews: [String: UIImage] = [:]
     private static let previewCache = DispatchQueue(label: "ryc0.switcher.previews", qos: .utility)
+    private static let decodedPreviews: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.totalCostLimit = 24 * 1024 * 1024
+        return cache
+    }()
 
     static func saveSwitcherPreview(_ image: UIImage?, for bundle: String) {
-        previewCache.async { LCSharedUtils.setSwitcherPreview(image, forBundlePath: bundle) }
+        cachePreview(image, for: bundle)
+        previewCache.async {
+            LCSharedUtils.setSwitcherPreview(image, forBundlePath: bundle)
+            cachePreview(image, for: bundle)
+        }
     }
 
     static func loadSwitcherPreview(for bundle: String) async -> UIImage? {
-        await withCheckedContinuation { continuation in
+        if let image = decodedPreviews.object(forKey: bundle as NSString) { return image }
+        return await withCheckedContinuation { continuation in
             previewCache.async {
-                let image = LCSharedUtils.switcherPreview(forBundlePath: bundle)
-                continuation.resume(returning: image?.preparingForDisplay() ?? image)
+                let source = LCSharedUtils.switcherPreview(forBundlePath: bundle)
+                let image = source?.preparingForDisplay() ?? source
+                cachePreview(image, for: bundle)
+                continuation.resume(returning: image)
             }
         }
+    }
+
+    static func cachedSwitcherPreview(for bundle: String) -> UIImage? {
+        decodedPreviews.object(forKey: bundle as NSString)
+    }
+
+    private static func cachePreview(_ image: UIImage?, for bundle: String) {
+        guard let image else {
+            decodedPreviews.removeObject(forKey: bundle as NSString)
+            return
+        }
+        let pixels = image.cgImage
+        decodedPreviews.setObject(image, forKey: bundle as NSString,
+                                  cost: (pixels?.bytesPerRow ?? 0) * (pixels?.height ?? 0))
     }
 
     static func removeSwitcherPreview(for container: String) {

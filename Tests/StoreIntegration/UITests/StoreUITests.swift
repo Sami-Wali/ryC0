@@ -47,26 +47,92 @@ final class StoreUITests: XCTestCase {
         app.buttons["ryc0.notifications.close"].tap()
     }
 
-    func testSwitcherScrollAndCloseFromMenu() {
+    func testNativeSwitcherHeadersAndBrowsing() {
         let app = launcher()
         let switcher = app.buttons["ryc0.app-switcher"]
         XCTAssertTrue(switcher.waitForExistence(timeout: 8))
         switcher.tap()
         let cards = app.buttons.matching(identifier: "ryc0.switcher.card")
-        XCTAssertGreaterThanOrEqual(cards.count, 3)
-        capture(app, name: "Refined Switcher First Card")
+        let focused = cards.matching(NSPredicate(format: "isSelected == true"))
+        XCTAssertTrue(focused.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["ryc0.switcher.error"].exists)
+        XCTAssertEqual(focused.firstMatch.label, "Fixture 1")
+        XCTAssertEqual(focused.firstMatch.frame.width / app.frame.width, 0.685, accuracy: 0.02)
+        capture(app, name: "Native Switcher From Home")
         let center = app.coordinate(withNormalizedOffset: CGVector(dx: 0.56, dy: 0.55))
         let right = app.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.55))
         center.press(forDuration: 0.05, thenDragTo: right, withVelocity: .slow, thenHoldForDuration: 0.05)
-        capture(app, name: "Refined Switcher Scrolled")
-        let before = cards.count
-        center.press(forDuration: 0.7)
-        let close = app.buttons["Close Fixture 2"]
-        XCTAssertTrue(close.waitForExistence(timeout: 4))
-        close.tap()
-        let dismissed = expectation(for: NSPredicate { _, _ in cards.count < before }, evaluatedWith: nil)
-        wait(for: [dismissed], timeout: 4)
-        XCTAssertTrue(app.buttons["ryc0.switcher.home"].exists)
+        let changed = expectation(for: NSPredicate { _, _ in focused.count == 1 && focused.firstMatch.label != "Fixture 1" }, evaluatedWith: nil)
+        wait(for: [changed], timeout: 4)
+        capture(app, name: "Native Switcher Scrolled")
+        app.buttons["ryc0.switcher.home"].tap()
+        XCTAssertTrue(switcher.waitForExistence(timeout: 5))
+    }
+
+    func testSwitcherSelectingCardDoesNotCrash() {
+        let app = launcher()
+        let switcher = app.buttons["ryc0.app-switcher"]
+        XCTAssertTrue(switcher.waitForExistence(timeout: 8))
+        switcher.tap()
+        let focused = app.buttons.matching(identifier: "ryc0.switcher.card").matching(NSPredicate(format: "isSelected == true")).firstMatch
+        XCTAssertTrue(focused.waitForExistence(timeout: 5))
+        focused.tap()
+        // The simulator fixture is not a runnable device guest; the app must
+        // return Home and report its launch result without losing the process.
+        XCTAssertTrue(switcher.waitForExistence(timeout: 15))
+        XCTAssertEqual(app.state, .runningForeground)
+        for alert in app.alerts.allElementsBoundByIndex {
+            if alert.buttons["OK"].exists { alert.buttons["OK"].tap() }
+        }
+        let homeReady = expectation(for: NSPredicate(format: "isHittable == true"), evaluatedWith: switcher)
+        wait(for: [homeReady], timeout: 8)
+        switcher.tap()
+        XCTAssertTrue(app.buttons.matching(identifier: "ryc0.switcher.card").firstMatch.waitForExistence(timeout: 5))
+        app.buttons["ryc0.switcher.home"].tap()
+        XCTAssertTrue(switcher.waitForExistence(timeout: 5))
+    }
+
+    private func cardCount(_ card: XCUIElement) -> Int {
+        guard let value = card.value as? String,
+              let count = value.split(separator: "/").last else { return -1 }
+        return Int(count.trimmingCharacters(in: .whitespaces)) ?? -1
+    }
+
+    func testSwitcherSwipeCloseAndContinueBrowsing() {
+        let app = launcher()
+        let switcher = app.buttons["ryc0.app-switcher"]
+        XCTAssertTrue(switcher.waitForExistence(timeout: 8))
+        switcher.tap()
+        let cards = app.buttons.matching(identifier: "ryc0.switcher.card")
+        let focused = cards.matching(NSPredicate(format: "isSelected == true"))
+        XCTAssertTrue(focused.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(focused.count, 1)
+        let before = cardCount(focused.firstMatch)
+        let dismissedName = focused.firstMatch.label
+        let center = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.55))
+        let top = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.12))
+        center.press(forDuration: 0.05, thenDragTo: top, withVelocity: .fast, thenHoldForDuration: 0)
+        let removed = expectation(for: NSPredicate { _, _ in
+            focused.count == 1 && focused.firstMatch.label != dismissedName && self.cardCount(focused.firstMatch) == before - 1
+        }, evaluatedWith: nil)
+        wait(for: [removed], timeout: 4)
+        capture(app, name: "Switcher Settled After Swipe Close")
+        let nextName = focused.firstMatch.label
+        let right = app.coordinate(withNormalizedOffset: CGVector(dx: 0.92, dy: 0.55))
+        center.press(forDuration: 0.05, thenDragTo: right, withVelocity: .slow, thenHoldForDuration: 0)
+        let browsed = expectation(for: NSPredicate { _, _ in
+            focused.count == 1 && focused.firstMatch.label != nextName
+        }, evaluatedWith: nil)
+        wait(for: [browsed], timeout: 4)
+        XCTAssertEqual(cardCount(focused.firstMatch), before - 1)
+        let olderName = focused.firstMatch.label
+        let left = app.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.55))
+        center.press(forDuration: 0.05, thenDragTo: left, withVelocity: .fast, thenHoldForDuration: 0)
+        let returned = expectation(for: NSPredicate { _, _ in
+            focused.count == 1 && focused.firstMatch.label != olderName
+        }, evaluatedWith: nil)
+        wait(for: [returned], timeout: 4)
+        XCTAssertEqual(cardCount(focused.firstMatch), before - 1)
         app.buttons["ryc0.switcher.home"].tap()
         XCTAssertTrue(switcher.waitForExistence(timeout: 5))
     }
