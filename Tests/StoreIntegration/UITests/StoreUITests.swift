@@ -84,6 +84,8 @@ final class StoreUITests: XCTestCase {
         for alert in app.alerts.allElementsBoundByIndex {
             if alert.buttons["OK"].exists { alert.buttons["OK"].tap() }
         }
+        let homeReady = expectation(for: NSPredicate(format: "isHittable == true"), evaluatedWith: switcher)
+        wait(for: [homeReady], timeout: 8)
         switcher.tap()
         XCTAssertTrue(app.buttons.matching(identifier: "ryc0.switcher.card").firstMatch.waitForExistence(timeout: 5))
         app.buttons["ryc0.switcher.home"].tap()

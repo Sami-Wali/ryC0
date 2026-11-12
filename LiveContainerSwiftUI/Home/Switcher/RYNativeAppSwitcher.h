@@ -15,12 +15,14 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic, copy) NSArray<RYNativeSwitcherItem *> *items;
 @property (nonatomic, copy, nullable) NSString *entryIdentifier;
 @property (nonatomic, copy, nullable) void (^openHandler)(NSString *identifier, CGRect frame);
+@property (nonatomic, copy, nullable) void (^didFinishOpeningHandler)(void);
 @property (nonatomic, copy, nullable) void (^closeHandler)(NSString *identifier);
 @property (nonatomic, copy, nullable) void (^homeHandler)(void);
 @property (nonatomic, readonly) BOOL usesNativeDeck;
 @property (nonatomic, readonly, nullable) NSString *focusedIdentifier;
 @property (nonatomic, readonly) NSDictionary<NSString *, NSValue *> *cardFrames;
 - (void)refreshItems;
+- (void)invalidate;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -9,6 +9,18 @@ typedef void (^RYCompletion)(BOOL);
 static __weak RYNativeAppSwitcher *RYCurrentSwitcher;
 static void *RYDeckOffsetContext = &RYDeckOffsetContext;
 
+// Declared initializer families let ARC transfer the allocated receiver and
+// owned result correctly, including initializers which return another object.
+@protocol RYDeckConstructing
+- (instancetype)initWithRootModifier:(id)modifier;
+- (instancetype)initWithPersonality:(id)personality liveContentOverlayCoordinator:(id)overlay dataSource:(id)source delegate:(id)delegate applicationController:(id)applications debugName:(id)name;
+- (instancetype)initWithPersonality:(id)personality liveContentOverlayCoordinator:(id)overlay dataSource:(id)source delegate:(id)delegate debugName:(id)name;
+- (instancetype)initWithItemsForLayoutRoles:(id)items environment:(NSInteger)environment preferredDisplayOrdinal:(NSInteger)ordinal;
+- (instancetype)initWithItemsForLayoutRoles:(id)items configuration:(NSInteger)configuration environment:(NSInteger)environment preferredDisplayOrdinal:(NSInteger)ordinal;
+- (instancetype)_initWithLayoutElements:(id)elements interfaceOrientation:(NSInteger)orientation interfaceOrientationByLayoutElement:(id)orientations spaceConfiguration:(NSInteger)space floatingConfiguration:(NSInteger)floating unlockedEnvironmentMode:(NSInteger)mode floatingSwitcherVisible:(BOOL)visible centerConfiguration:(NSInteger)center centerEntityModal:(BOOL)modal peekConfiguration:(NSInteger)peek bundleIDShowingAppExpose:(id)bundle windowPickerRole:(NSInteger)role displayOrdinal:(NSInteger)ordinal isDisplayExternal:(BOOL)external;
+- (instancetype)initWithTransitionID:(id)identifier phase:(NSUInteger)phase animated:(BOOL)animated;
+@end
+
 @implementation RYNativeSwitcherItem
 @end
 
@@ -170,6 +182,19 @@ static id RYApplicationController(void) {
     return controller;
 }
 
+typedef id (*RYHeaderInitializer)(id __attribute__((ns_consumed)), SEL, id, id, id, BOOL, BOOL, BOOL) __attribute__((ns_returns_retained));
+static id RYInitializeHeader(id __attribute__((ns_consumed)) object, SEL selector, id layout, id provider, id identity, BOOL titles, BOOL windowing, BOOL footer) __attribute__((ns_returns_retained));
+static id __attribute__((ns_returns_retained)) RYInitializeHeader(id __attribute__((ns_consumed)) object, SEL selector, id layout, id provider, id identity, BOOL titles, BOOL windowing, BOOL footer) {
+    SEL original = NSSelectorFromString([@"ry_original_" stringByAppendingString:NSStringFromSelector(selector)]);
+    id result = ((RYHeaderInitializer)objc_msgSend)(object, original, layout, provider, identity, titles, windowing, footer);
+    for (id item in RYSend(layout, @"allItems")) {
+        RYNativeSwitcherItem *entry = [RYCurrentSwitcher itemForBundle:RYSend(item, @"bundleIdentifier")];
+        if (entry.name.length) ((void (*)(id, SEL, id, id))objc_msgSend)(result,
+            NSSelectorFromString(@"setCustomTitleText:forDisplayItem:"), entry.name, item);
+    }
+    return result;
+}
+
 static void RYInstallDeckHooks(void) {
     static dispatch_once_t once;
     dispatch_once(&once, ^{
@@ -247,16 +272,9 @@ static void RYInstallDeckHooks(void) {
             SEL headerInit = NSSelectorFromString(name);
             Method headerInitMethod = class_getInstanceMethod(header, headerInit);
             if (!headerInitMethod) continue;
-            IMP original = method_getImplementation(headerInitMethod);
-            method_setImplementation(headerInitMethod, imp_implementationWithBlock(^id(id object, id layout, id provider, id identity, BOOL titles, BOOL windowing, BOOL footer) {
-                id result = ((id (*)(id, SEL, id, id, id, BOOL, BOOL, BOOL))original)(object, headerInit, layout, provider, identity, titles, windowing, footer);
-                for (id item in RYSend(layout, @"allItems")) {
-                    RYNativeSwitcherItem *entry = [RYCurrentSwitcher itemForBundle:RYSend(item, @"bundleIdentifier")];
-                    if (entry.name.length) ((void (*)(id, SEL, id, id))objc_msgSend)(result,
-                        NSSelectorFromString(@"setCustomTitleText:forDisplayItem:"), entry.name, item);
-                }
-                return result;
-            }));
+            SEL original = NSSelectorFromString([@"ry_original_" stringByAppendingString:name]);
+            class_addMethod(header, original, method_getImplementation(headerInitMethod), method_getTypeEncoding(headerInitMethod));
+            method_setImplementation(headerInitMethod, (IMP)RYInitializeHeader);
         }
         SEL maximum = NSSelectorFromString(@"setMaximumNumberOfVisibleIcons:");
         Method maximumMethod = class_getInstanceMethod(header, maximum);
@@ -345,20 +363,17 @@ static void RYInstallDeckHooks(void) {
         RYInstallDeckHooks();
         [self refreshItems];
         id root = [NSClassFromString(@"SBFullScreenFluidSwitcherRootSwitcherModifier") new];
-        id personality = ((id (*)(id, SEL, id))objc_msgSend)([NSClassFromString(@"SBFluidSwitcherPersonality") alloc],
-            NSSelectorFromString(@"initWithRootModifier:"), root);
+        id personality = [(id<RYDeckConstructing>)[NSClassFromString(@"SBFluidSwitcherPersonality") alloc] initWithRootModifier:root];
         self.liveOverlayCoordinator = [RYLiveOverlayCoordinator new];
         id controller = RYApplicationController();
         Class cls = NSClassFromString(@"SBDeckSwitcherViewController");
         SEL initializer = NSSelectorFromString(@"initWithPersonality:liveContentOverlayCoordinator:dataSource:delegate:applicationController:debugName:");
         id deck;
         if ([cls instancesRespondToSelector:initializer]) {
-            deck = ((id (*)(id, SEL, id, id, id, id, id, id))objc_msgSend)([cls alloc], initializer,
-                personality, self.liveOverlayCoordinator, self, self, controller, @"ryC0");
+            deck = [(id<RYDeckConstructing>)[cls alloc] initWithPersonality:personality liveContentOverlayCoordinator:self.liveOverlayCoordinator dataSource:self delegate:self applicationController:controller debugName:@"ryC0"];
         } else {
             initializer = NSSelectorFromString(@"initWithPersonality:liveContentOverlayCoordinator:dataSource:delegate:debugName:");
-            deck = ((id (*)(id, SEL, id, id, id, id, id))objc_msgSend)([cls alloc], initializer,
-                personality, self.liveOverlayCoordinator, self, self, @"ryC0");
+            deck = [(id<RYDeckConstructing>)[cls alloc] initWithPersonality:personality liveContentOverlayCoordinator:self.liveOverlayCoordinator dataSource:self delegate:self debugName:@"ryC0"];
         }
         if (![deck isKindOfClass:UIViewController.class]) @throw [NSException exceptionWithName:@"RYDeckUnavailable" reason:@"The system app switcher is unavailable." userInfo:nil];
         self.deck = deck;
@@ -410,6 +425,9 @@ static void RYInstallDeckHooks(void) {
 }
 
 - (void)refreshItems {
+    // Recency changes as the guest starts. Keep the selected layout stable
+    // until its native expansion has handed over to that guest.
+    if (self.exiting) return;
     if (!NSClassFromString(@"SBDisplayItem")) return;
     NSMutableArray *layouts = [NSMutableArray array];
     NSMutableArray *changedImages = [NSMutableArray array];
@@ -427,10 +445,10 @@ static void RYInstallDeckHooks(void) {
             Class cls = NSClassFromString(@"SBAppLayout");
             SEL init = NSSelectorFromString(@"initWithItemsForLayoutRoles:environment:preferredDisplayOrdinal:");
             if ([cls instancesRespondToSelector:init]) {
-                layout = ((id (*)(id, SEL, id, NSInteger, NSInteger))objc_msgSend)([cls alloc], init, @{@1:displayItem}, 1, 0);
+                layout = [(id<RYDeckConstructing>)[cls alloc] initWithItemsForLayoutRoles:@{@1:displayItem} environment:1 preferredDisplayOrdinal:0];
             } else {
                 init = NSSelectorFromString(@"initWithItemsForLayoutRoles:configuration:environment:preferredDisplayOrdinal:");
-                layout = ((id (*)(id, SEL, id, NSInteger, NSInteger, NSInteger))objc_msgSend)([cls alloc], init, @{@1:displayItem}, 1, 1, 0);
+                layout = [(id<RYDeckConstructing>)[cls alloc] initWithItemsForLayoutRoles:@{@1:displayItem} configuration:1 environment:1 preferredDisplayOrdinal:0];
             }
             if (layout) self.layoutsByScene[scene] = layout;
         }
@@ -514,9 +532,7 @@ static void RYInstallDeckHooks(void) {
 
 - (id)layoutStateWithMode:(NSInteger)mode {
     Class cls = NSClassFromString(@"SBMainDisplayLayoutState");
-    SEL init = NSSelectorFromString(@"_initWithLayoutElements:interfaceOrientation:interfaceOrientationByLayoutElement:spaceConfiguration:floatingConfiguration:unlockedEnvironmentMode:floatingSwitcherVisible:centerConfiguration:centerEntityModal:peekConfiguration:bundleIDShowingAppExpose:windowPickerRole:displayOrdinal:isDisplayExternal:");
-    return ((id (*)(id, SEL, id, NSInteger, id, NSInteger, NSInteger, NSInteger, BOOL, NSInteger, BOOL, NSInteger, id, NSInteger, NSInteger, BOOL))objc_msgSend)([cls alloc], init,
-        [NSSet set], 1, @{}, 0, 0, mode, NO, 0, NO, 0, nil, 0, 0, NO);
+    return [(id<RYDeckConstructing>)[cls alloc] _initWithLayoutElements:[NSSet set] interfaceOrientation:1 interfaceOrientationByLayoutElement:@{} spaceConfiguration:0 floatingConfiguration:0 unlockedEnvironmentMode:mode floatingSwitcherVisible:NO centerConfiguration:0 centerEntityModal:NO peekConfiguration:0 bundleIDShowingAppExpose:nil windowPickerRole:0 displayOrdinal:0 isDisplayExternal:NO];
 }
 
 - (void)transitionFrom:(NSInteger)from to:(NSInteger)to animated:(BOOL)animated completion:(RYCompletion)completion {
@@ -547,8 +563,7 @@ static void RYInstallDeckHooks(void) {
     return self.layoutProvider;
 }
 - (id)switcherContentController:(id)controller transitionEventForContext:(id)context identifier:(id)identifier phase:(NSUInteger)phase animated:(BOOL)animated {
-    id event = ((id (*)(id, SEL, id, NSUInteger, BOOL))objc_msgSend)([NSClassFromString(@"SBTransitionSwitcherModifierEvent") alloc],
-        NSSelectorFromString(@"initWithTransitionID:phase:animated:"), identifier, phase, animated);
+    id event = [(id<RYDeckConstructing>)[NSClassFromString(@"SBTransitionSwitcherModifierEvent") alloc] initWithTransitionID:identifier phase:phase animated:animated];
     RYSet(event, @"fromEnvironmentMode", RYGet(RYGet(context, @"previousLayoutState"), @"unlockedEnvironmentMode") ?: @1);
     RYSet(event, @"toEnvironmentMode", RYGet(RYGet(context, @"layoutState"), @"unlockedEnvironmentMode") ?: @2);
     RYSet(event, @"fromInterfaceOrientation", @1);
@@ -572,6 +587,7 @@ static void RYInstallDeckHooks(void) {
 
 - (void)setBlurProgress:(double)progress mode:(NSInteger)mode completion:(RYCompletion)completion {
     dispatch_async(dispatch_get_main_queue(), ^{
+        if (!self.deck) { if (completion) completion(YES); return; }
         double target = MIN(1, MAX(0.001, progress));
         if (fabs(target - self.blurTo) < 0.0001) { if (completion) completion(YES); return; }
         [self.blurLink invalidate];
@@ -629,11 +645,20 @@ static void RYInstallDeckHooks(void) {
     if (!item) return;
     self.exiting = YES;
     self.activatingLayout = self.layoutsByScene[scene];
+#if DEBUG
+    NSLog(@"[ryC0 launch] %.3f native card selected", CACurrentMediaTime());
+#endif
+    // Start guest preparation during the native animation, rather than
+    // serializing process startup after the card has filled the screen.
+    if (self.openHandler) self.openHandler(item.identifier, self.view.bounds);
     __block BOOL completed = NO;
     void (^open)(BOOL) = ^(BOOL finished) {
         if (completed) return;
         completed = YES;
-        if (self.openHandler) self.openHandler(item.identifier, self.view.bounds);
+#if DEBUG
+        NSLog(@"[ryC0 launch] %.3f native card expanded", CACurrentMediaTime());
+#endif
+        if (self.didFinishOpeningHandler) self.didFinishOpeningHandler();
     };
     [self transitionFrom:2 to:3 animated:!UIAccessibilityIsReduceMotionEnabled() completion:open];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1200 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{ open(YES); });
@@ -697,8 +722,7 @@ static void RYInstallDeckHooks(void) {
     }
     return YES;
 }
-- (void)viewDidDisappear:(BOOL)animated {
-    [super viewDidDisappear:animated];
+- (void)invalidate {
     [self tearDownDeck];
 }
 - (void)tearDownDeck {
@@ -707,6 +731,7 @@ static void RYInstallDeckHooks(void) {
     [self.observedScroll removeObserver:self forKeyPath:@"contentOffset" context:RYDeckOffsetContext];
     self.observedScroll = nil;
     [self.blurLink invalidate]; self.blurLink = nil;
+    self.blurCompletion = nil;
     [self.clampLink invalidate]; self.clampLink = nil;
     if (self.blurAnimator.state == UIViewAnimatingStateActive) [self.blurAnimator stopAnimation:YES];
     self.deck.view.accessibilityElements = nil;

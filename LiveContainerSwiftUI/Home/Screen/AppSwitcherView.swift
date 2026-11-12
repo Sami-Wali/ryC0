@@ -10,6 +10,7 @@ enum RYSwitcherEntry {
 struct AppSwitcherView: View {
     let zoomNamespace: Namespace.ID
     let open: (LCAppModel, String?, CGRect) -> Void
+    let didFinishOpening: () -> Void
     let goHome: () -> Void
 
     @Environment(HomeScreenModel.self) private var home
@@ -27,7 +28,7 @@ struct AppSwitcherView: View {
                        open(session.app, session.container, frame)
                    }, close: { id in
                        if let session = cards.first(where: { $0.id == id }) { closeSession(session) }
-                   }, goHome: goHome)
+                   }, didFinishOpening: didFinishOpening, goHome: goHome)
             .ignoresSafeArea()
             .accessibilityAction(.escape, goHome)
             .task(id: cards.map(\.id)) {
@@ -123,6 +124,7 @@ private struct NativeDeck: UIViewControllerRepresentable {
     let entry: String?
     let open: (String, CGRect) -> Void
     let close: (String) -> Void
+    let didFinishOpening: () -> Void
     let goHome: () -> Void
 
     func makeUIViewController(context: Context) -> RYNativeAppSwitcher {
@@ -130,6 +132,7 @@ private struct NativeDeck: UIViewControllerRepresentable {
         controller.items = items
         controller.entryIdentifier = entry
         controller.openHandler = open
+        controller.didFinishOpeningHandler = didFinishOpening
         controller.closeHandler = close
         controller.homeHandler = goHome
         return controller
@@ -138,8 +141,13 @@ private struct NativeDeck: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: RYNativeAppSwitcher, context: Context) {
         controller.items = items
         controller.openHandler = open
+        controller.didFinishOpeningHandler = didFinishOpening
         controller.closeHandler = close
         controller.homeHandler = goHome
         controller.refreshItems()
+    }
+
+    static func dismantleUIViewController(_ controller: RYNativeAppSwitcher, coordinator: ()) {
+        controller.invalidate()
     }
 }

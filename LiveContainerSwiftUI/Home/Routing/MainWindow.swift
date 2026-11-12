@@ -45,6 +45,10 @@ import UIKit
         }
     }
 
+    static func cachedSwitcherPreview(for bundle: String) -> UIImage? {
+        decodedPreviews.object(forKey: bundle as NSString)
+    }
+
     private static func cachePreview(_ image: UIImage?, for bundle: String) {
         guard let image else {
             decodedPreviews.removeObject(forKey: bundle as NSString)

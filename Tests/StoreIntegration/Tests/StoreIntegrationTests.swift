@@ -56,7 +56,7 @@ import XCTest
 
     func testNativeSwitcherFromHomeFocusesFirstCard() async throws {
         let (window, controller) = nativeSwitcher(count: 5, fromApp: false)
-        defer { window.isHidden = true; window.rootViewController = nil }
+        defer { window.isHidden = true; controller.invalidate(); window.rootViewController = nil }
         try await Task.sleep(for: .seconds(1))
         XCTAssertTrue(controller.usesNativeDeck)
         XCTAssertEqual(controller.focusedIdentifier, "native-fixture-0")
@@ -67,7 +67,7 @@ import XCTest
 
     func testNativeSwitcherFromAppFocusesSecondCard() async throws {
         let (window, controller) = nativeSwitcher(count: 5, fromApp: true)
-        defer { window.isHidden = true; window.rootViewController = nil }
+        defer { window.isHidden = true; controller.invalidate(); window.rootViewController = nil }
         try await Task.sleep(for: .seconds(1))
         XCTAssertTrue(controller.usesNativeDeck)
         XCTAssertEqual(controller.focusedIdentifier, "native-fixture-1")
@@ -79,11 +79,62 @@ import XCTest
 
     func testNativeSwitcherSingleCardStaysInFocus() async throws {
         let (window, controller) = nativeSwitcher(count: 1, fromApp: true)
-        defer { window.isHidden = true; window.rootViewController = nil }
+        defer { window.isHidden = true; controller.invalidate(); window.rootViewController = nil }
         try await Task.sleep(for: .seconds(1))
         XCTAssertTrue(controller.usesNativeDeck)
         XCTAssertEqual(controller.focusedIdentifier, "native-fixture-0")
         XCTAssertEqual(controller.cardFrames.count, 1)
+    }
+
+    func testNativeSwitcherPreparesGuestBeforeCardExpansion() async throws {
+        let (window, controller) = nativeSwitcher(count: 5, fromApp: false)
+        defer { window.isHidden = true; controller.invalidate(); window.rootViewController = nil }
+        try await Task.sleep(for: .seconds(1))
+        let expanded = expectation(description: "Native card finished expanding")
+        var events: [String] = []
+        controller.openHandler = { identifier, _ in
+            events.append("prepare")
+            XCTAssertEqual(identifier, "native-fixture-0")
+            let frame = controller.cardFrames[identifier]?.cgRectValue ?? .zero
+            XCTAssertEqual(frame.width / controller.view.bounds.width, 0.685, accuracy: 0.015,
+                           "Guest preparation must start while the card is still in the deck")
+            // Starting a guest updates recency. It must not reorder a deck
+            // which is already expanding the selected app.
+            controller.items.reverse()
+            controller.refreshItems()
+            XCTAssertEqual(controller.focusedIdentifier, identifier)
+        }
+        controller.didFinishOpeningHandler = {
+            events.append("expanded")
+            expanded.fulfill()
+        }
+        let elements = controller.children.first?.view.accessibilityElements as? [UIAccessibilityElement]
+        let selected = try XCTUnwrap(elements?.first { $0.accessibilityTraits.contains(.selected) })
+        XCTAssertTrue(selected.accessibilityActivate())
+        XCTAssertEqual(events.first, "prepare")
+        await fulfillment(of: [expanded], timeout: 3)
+        XCTAssertEqual(events, ["prepare", "expanded"])
+    }
+
+    func testNativeSwitcherSurvivesTemporaryFullScreenCover() async throws {
+        let (window, controller) = nativeSwitcher(count: 5, fromApp: true)
+        defer { window.isHidden = true; controller.invalidate(); window.rootViewController = nil }
+        try await Task.sleep(for: .seconds(1))
+        let cover = UIViewController()
+        cover.modalPresentationStyle = .fullScreen
+        controller.present(cover, animated: false)
+        try await Task.sleep(for: .milliseconds(200))
+        controller.dismiss(animated: false)
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertTrue(controller.usesNativeDeck, "A temporary cover must not leave a transparent, invalidated deck")
+        XCTAssertEqual(controller.focusedIdentifier, "native-fixture-1")
+        let home = expectation(description: "Home remains usable after the cover closes")
+        controller.homeHandler = { home.fulfill() }
+        let button = try XCTUnwrap(controller.view.subviews.compactMap { $0 as? UIButton }.first {
+            $0.accessibilityIdentifier == "ryc0.switcher.home"
+        })
+        button.sendActions(for: .touchUpInside)
+        await fulfillment(of: [home], timeout: 3)
     }
 
     func testDockPagesAndLegacyStoreRemoval() throws {
