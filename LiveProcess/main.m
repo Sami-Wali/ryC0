@@ -42,17 +42,34 @@ static void NotifyHostAfterFirstGuestFrame(NSString *requestID) {
     if (!requestID) return;
     NSString *channel = [NSString stringWithFormat:@"com.ry0.ryC0.preview.%@.firstFrame", requestID];
     NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
-    __block id observer = [center addObserverForName:UIWindowDidBecomeKeyNotification object:nil
-                                              queue:nil usingBlock:^(NSNotification *note) {
-        UIWindow *window = note.object;
-        if (!window.windowScene || window.hidden || window.windowLevel != UIWindowLevelNormal) return;
-        [center removeObserver:observer];
-        observer = nil;
+    __block NSMutableArray *observers = [NSMutableArray array];
+    __block BOOL scheduled = NO;
+    void (^checkWindows)(NSNotification *) = ^(NSNotification *note) {
+        if (scheduled) return;
+        BOOL ready = NO;
+        NSArray<UIWindow *> *windows = nil;
+        if ([note.object isKindOfClass:UIWindowScene.class]) windows = ((UIWindowScene *)note.object).windows;
+        else if ([note.object isKindOfClass:UIWindow.class] && ((UIWindow *)note.object).windowScene) windows = @[note.object];
+        for (UIWindow *window in windows) {
+            if (!window.hidden && window.rootViewController && window.windowLevel == UIWindowLevelNormal && !CGRectIsEmpty(window.bounds)) {
+                ready = YES;
+                break;
+            }
+        }
+        if (!ready) return;
+        scheduled = YES;
+        for (id observer in observers) [center removeObserver:observer];
+        observers = nil;
         // Let the guest commit its first frame before the host zooms it open.
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 50 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
             notify_post(channel.UTF8String);
         });
-    }];
+    };
+    // A guest can make its window key before UIKit attaches it to a scene.
+    // Check visibility and scene activation too, so it doesn't hit the fallback.
+    for (NSNotificationName name in @[UIWindowDidBecomeKeyNotification, UIWindowDidBecomeVisibleNotification, UISceneDidActivateNotification]) {
+        [observers addObject:[center addObserverForName:name object:nil queue:NSOperationQueue.mainQueue usingBlock:checkWindows]];
+    }
 }
 
 static void ListenForGuestPreviews(NSString *requestID) {

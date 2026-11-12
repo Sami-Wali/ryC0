@@ -139,6 +139,14 @@ final class HomeScreenModel {
     /// appearance instead of the Home Screen's dark one.
     var isCoveredByScreen = false
     var showsAppSwitcher = false
+    var switcherEntry: RYSwitcherEntry = .home
+    var switcherPresentationID = UUID()
+
+    func showAppSwitcher(from entry: RYSwitcherEntry) {
+        switcherEntry = entry
+        switcherPresentationID = UUID()
+        showsAppSwitcher = true
+    }
 
     /// The app the person asked to remove, while the question shows.
     var pendingRemoval: LCAppModel?

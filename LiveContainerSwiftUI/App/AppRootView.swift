@@ -29,7 +29,8 @@ struct AppRootView: View {
 
             if home.showsAppSwitcher {
                 AppSwitcherView(zoomNamespace: zoomNamespace, open: openSwitcherSelection, goHome: dismissSwitcher)
-                    .transition(.opacity)
+                    .id(home.switcherPresentationID)
+                    .transition(.identity)
                     .zIndex(1)
             }
 
@@ -45,7 +46,6 @@ struct AppRootView: View {
                     .zIndex(3)
             }
         }
-        .animation(.easeOut(duration: reduceMotion ? 0.12 : 0.24), value: home.showsAppSwitcher)
         .modifier(HomeScreenPresentation(model: home, zoomNamespace: zoomNamespace))
         .onChange(of: onboarding.isPresented, onboardingChanged)
         .onReceive(MainWindow.guestErrors) { coordinator.errorMessage = $0 }
