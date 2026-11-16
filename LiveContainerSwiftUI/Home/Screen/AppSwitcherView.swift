@@ -21,7 +21,7 @@ struct AppSwitcherView: View {
     @State private var previews: [String: UIImage] = [:]
 
     var body: some View {
-        let cards = sessions
+        let cards = Self.availableSessions(home: home, closing: closing, dismissed: dismissed)
         NativeDeck(items: cards.map(nativeItem), entry: home.switcherEntry == .app ? cards.first?.id : nil,
                    open: { id, frame in
                        guard let session = cards.first(where: { $0.id == id }) else { return }
@@ -68,8 +68,12 @@ struct AppSwitcherView: View {
         }
     }
 
-    private var sessions: [SwitcherSession] {
-        home.apps.flatMap { key, app -> [SwitcherSession] in
+    static func availableSessions(home: HomeScreenModel, closing: Set<String> = [],
+                                  dismissed: [String: Date]? = nil) -> [SwitcherSession] {
+        let hosted = FullScreenGuestSession.shared
+        let windows = MultitaskManager.shared
+        let dismissed = dismissed ?? UserDefaults.standard.dictionary(forKey: "ryc0.switcher.dismissed") as? [String: Date] ?? [:]
+        return home.apps.flatMap { key, app -> [SwitcherSession] in
             guard !app.appInfo.isHidden else { return [] }
             let date = app.appInfo.lastLaunched ?? .distantPast
             let live = app.uiContainers.compactMap { entry -> SwitcherSession? in
@@ -109,7 +113,7 @@ struct AppSwitcherView: View {
     }
 }
 
-private struct SwitcherSession: Identifiable {
+struct SwitcherSession: Identifiable {
     let key: String
     let app: LCAppModel
     let container: String?

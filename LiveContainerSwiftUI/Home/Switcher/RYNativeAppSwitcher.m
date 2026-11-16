@@ -351,12 +351,31 @@ static void RYInstallDeckHooks(void) {
     home.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin;
     [home addTarget:self action:@selector(backgroundTapped) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:home];
+    UIButton *closeAll = [UIButton buttonWithType:UIButtonTypeSystem];
+    UIButtonConfiguration *configuration = [UIButtonConfiguration filledButtonConfiguration];
+    configuration.title = [NSLocale.preferredLanguages.firstObject hasPrefix:@"ar"] ? @"إغلاق الكل" : @"Close All";
+    configuration.image = [UIImage systemImageNamed:@"xmark"];
+    configuration.imagePadding = 8;
+    configuration.cornerStyle = UIButtonConfigurationCornerStyleCapsule;
+    configuration.baseBackgroundColor = [UIColor colorWithWhite:0.18 alpha:0.95];
+    configuration.baseForegroundColor = UIColor.whiteColor;
+    closeAll.configuration = configuration;
+    closeAll.accessibilityIdentifier = @"ryc0.switcher.close-all";
+    closeAll.translatesAutoresizingMaskIntoConstraints = NO;
+    [closeAll addTarget:self action:@selector(closeAllTapped) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:closeAll];
+    [NSLayoutConstraint activateConstraints:@[
+        [closeAll.centerXAnchor constraintEqualToAnchor:self.view.centerXAnchor],
+        [closeAll.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.bottomAnchor constant:-24],
+        [closeAll.heightAnchor constraintGreaterThanOrEqualToConstant:44]
+    ]];
 }
 
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     if (self.started) return;
     self.started = YES;
+    if (!self.items.count) { if (self.homeHandler) self.homeHandler(); return; }
     RYCurrentSwitcher = self;
     @try {
         LCLoadSpringBoardFramework();
@@ -389,7 +408,7 @@ static void RYInstallDeckHooks(void) {
         tap.delegate = self;
         tap.cancelsTouchesInView = NO;
         [self.view addGestureRecognizer:tap];
-        for (UIView *view in self.view.subviews) if ([view.accessibilityIdentifier isEqualToString:@"ryc0.switcher.home"]) [self.view bringSubviewToFront:view];
+        for (UIView *view in self.view.subviews) if ([view.accessibilityIdentifier isEqualToString:@"ryc0.switcher.home"] || [view.accessibilityIdentifier isEqualToString:@"ryc0.switcher.close-all"]) [self.view bringSubviewToFront:view];
         [self.deck.view layoutIfNeeded];
         self.observedScroll = RYFindDeck(self.deck.view);
         [self.observedScroll addObserver:self forKeyPath:@"contentOffset" options:NSKeyValueObservingOptionNew context:RYDeckOffsetContext];
@@ -706,6 +725,29 @@ static void RYInstallDeckHooks(void) {
     }
     if (CACurrentMediaTime() > self.clampDeadline || !self.deck) { [self.clampLink invalidate]; self.clampLink = nil; }
     [self updateAccessibility];
+}
+- (void)closeAllTapped {
+    if (self.exiting) return;
+    self.exiting = YES;
+    // Keep layouts stable during the native home transition; apply the batch
+    // dismissal only after the deck has finished animating.
+    NSArray<RYNativeSwitcherItem *> *items = [self.items copy];
+    void (^close)(NSString *) = self.closeHandler;
+    void (^home)(void) = self.homeHandler;
+    RYCompletion finish = ^(BOOL finished) {
+        for (RYNativeSwitcherItem *item in items) {
+            NSString *scene = [@"ryc0-switcher:" stringByAppendingString:item.identifier];
+            if ([self.closing containsObject:scene]) continue;
+            [self.closing addObject:scene];
+            if (close) close(item.identifier);
+        }
+        if (home) home();
+    };
+    if (self.usesNativeDeck) {
+        [self transitionFrom:2 to:1 animated:!UIAccessibilityIsReduceMotionEnabled() completion:finish];
+    } else {
+        finish(YES);
+    }
 }
 - (void)backgroundTapped {
     if (!self.usesNativeDeck) { if (self.homeHandler) self.homeHandler(); return; }

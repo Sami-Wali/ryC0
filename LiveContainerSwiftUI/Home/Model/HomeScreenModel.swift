@@ -143,6 +143,11 @@ final class HomeScreenModel {
     var switcherPresentationID = UUID()
 
     func showAppSwitcher(from entry: RYSwitcherEntry) {
+        guard !showsAppSwitcher else { return }
+        guard !AppSwitcherView.availableSessions(home: self).isEmpty else {
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+            return
+        }
         switcherEntry = entry
         switcherPresentationID = UUID()
         showsAppSwitcher = true

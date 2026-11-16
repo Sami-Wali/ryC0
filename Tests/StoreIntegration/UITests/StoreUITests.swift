@@ -47,6 +47,28 @@ final class StoreUITests: XCTestCase {
         app.buttons["ryc0.notifications.close"].tap()
     }
 
+    func testZZCloseAllAndRejectEmptySwitcher() {
+        let app = launcher()
+        let switcher = app.buttons["ryc0.app-switcher"]
+        XCTAssertTrue(switcher.waitForExistence(timeout: 8))
+        switcher.tap()
+        let closeAll = app.buttons["ryc0.switcher.close-all"]
+        XCTAssertTrue(closeAll.waitForExistence(timeout: 5))
+        closeAll.tap()
+        let homeReady = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: closeAll)
+        wait(for: [homeReady], timeout: 5)
+        for _ in 0..<3 { switcher.tap() }
+        XCTAssertFalse(app.buttons["ryc0.switcher.close-all"].exists)
+        XCTAssertFalse(app.buttons["ryc0.switcher.card"].exists)
+        XCTAssertTrue(switcher.exists)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(switcher.waitForExistence(timeout: 8))
+        switcher.tap()
+        XCTAssertFalse(app.buttons["ryc0.switcher.close-all"].exists)
+        XCTAssertTrue(switcher.exists)
+    }
+
     func testNativeSwitcherHeadersAndBrowsing() {
         let app = launcher()
         let switcher = app.buttons["ryc0.app-switcher"]

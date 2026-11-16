@@ -30,3 +30,28 @@ xcodebuild -project "$test_project/RYStoreIntegration.xcodeproj" \
 ```
 
 The simulator verifies that ryP0 is unpacked and registered as a guest. Execution of the device IPA, the guest Home swipe, and Lock Screen or Dynamic Island rendering require a signed device build.
+
+## Background playback and empty switcher regression
+
+`testZZCloseAllAndRejectEmptySwitcher` closes every seeded card, repeatedly taps
+Apps with an empty list, and checks that the empty state survives relaunch.
+The simulator cannot verify the physical rejection haptic or guest audio.
+
+On a signed device, play audio in YouTube Music, leave ryC0 for another app,
+lock/unlock, then return. Check uninterrupted playback and the same guest session,
+including Now Playing/Live Activity updates. Repeat after returning to ryC0 Home,
+and verify that explicitly closing the guest still terminates it. Exercise both
+the legacy scene presenter and the hosting-controller API where available.
+The fullscreen guest now receives host scene foreground/background changes without
+forwarding the legacy NSExtension host-background request notification.
+
+## ryP0 launch investigation
+
+There is no bundle-identifier exception for ryP0 in `LCAppModel.runApp`,
+`FullScreenGuestSession`, or the native switcher. Its special handling provisions
+the bundled IPA, places it in the initial layout, and supports a notification test.
+All ordinary hosted guests use the same opening zoom, first-frame handshake,
+cover dismissal, and switcher transitions. Classic mode, window mode, 32-bit/JIT
+requirements, cold versus resumed launches, and the guest's first-frame timing
+can select different behavior. Compare these settings and cold/resumed launches
+on the affected device before attributing its motion difference to the bundle ID.
