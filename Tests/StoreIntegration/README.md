@@ -42,8 +42,10 @@ lock/unlock, then return. Check uninterrupted playback and the same guest sessio
 including Now Playing/Live Activity updates. Repeat after returning to ryC0 Home,
 and verify that explicitly closing the guest still terminates it. Exercise both
 the legacy scene presenter and the hosting-controller API where available.
-The fullscreen guest now receives host scene foreground/background changes without
-forwarding the legacy NSExtension host-background request notification.
+Background playback remains unresolved. The experimental fullscreen scene-lifecycle
+forwarding was reverted after a device report of crashes when opening any guest.
+The presenter and extension notification behavior match the pre-change implementation;
+do not reintroduce this forwarding without a signed-device launch and playback test.
 
 ## ryP0 launch investigation
 

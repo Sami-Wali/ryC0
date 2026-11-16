@@ -29,7 +29,6 @@
 @property(nonatomic) bool isAppTerminationCleanUpCalled;
 @property(nonatomic) BOOL terminationRequested;
 @property(nonatomic) BOOL isFullScreenGuest;
-@property(nonatomic) BOOL hostedGuestVisible;
 @property(nonatomic) NSString *previewRequestID;
 @property(nonatomic) int previewNotification;
 @property(nonatomic) int firstFrameNotification;
@@ -60,7 +59,6 @@
     self.scaleRatio = 1.0;
     self.isAppTerminationCleanUpCalled = false;
     self.isFullScreenGuest = fullScreen;
-    self.hostedGuestVisible = fullScreen;
     self.firstFrameNotification = -1;
     self.homeSwipeNotification = -1;
     self.isNativeWindow = !fullScreen && [NSUserDefaults.lcSharedDefaults integerForKey:@"LCMultitaskMode" ] == 1;
@@ -356,16 +354,6 @@
         self.contentView = [[UIView alloc] init];
         [self.contentView addSubview:self.presenter.presentationView];
     }
-    if (self.isFullScreenGuest) {
-        // A hosted app has a scene lifecycle, not the transient lifecycle of
-        // an extension UI. The legacy presenter needs this too: forwarding the
-        // host's background note can end the extension's request during audio.
-        NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
-        [center removeObserver:self.extension name:UIApplicationDidBecomeActiveNotification object:UIApp];
-        [center removeObserver:self.extension name:UIApplicationWillResignActiveNotification object:UIApp];
-        [center removeObserver:self.extension name:UIApplicationDidEnterBackgroundNotification object:UIApp];
-        [center removeObserver:self.extension name:UIApplicationWillEnterForegroundNotification object:UIApp];
-    }
     [self.view addSubview:_contentView];
     
     // If we have a staging URL scheme, pass it now
@@ -390,7 +378,6 @@
 }
 
 - (void)setHostedGuestVisible:(BOOL)visible {
-    self.hostedGuestVisible = visible;
     _UIScenePresenter *presenter = self.presenter;
     if (!self.isFullScreenGuest || self.isAppTerminationCleanUpCalled || !presenter) return;
     [presenter.scene updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
@@ -459,15 +446,6 @@
 - (void)_performActionsForUIScene:(UIScene *)scene withUpdatedFBSScene:(id)fbsScene settingsDiff:(FBSSceneSettingsDiff *)diff fromSettings:(UIApplicationSceneSettings *)settings transitionContext:(id)context lifecycleActionType:(uint32_t)actionType {
     if(!self.isAppRunning) {
         [self appTerminationCleanUp];
-    }
-    if (self.isFullScreenGuest && diff && !self.isAppTerminationCleanUpCalled) {
-        // Let the guest receive real scene background/foreground transitions
-        // so its audio/background tasks can retain their normal assertions.
-        UIMutableApplicationSceneSettings *host = [diff settingsByApplyingToMutableCopyOfSettings:settings];
-        [self.presenter.scene updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *guest) {
-            guest.foreground = self.hostedGuestVisible && host.foreground;
-            guest.deactivationReasons = host.deactivationReasons;
-        }];
     }
     if (!diff || ![self.delegate respondsToSelector:@selector(appSceneVC:didUpdateFromSettings:transitionContext:lifecycleActionType:)]) return;
     
