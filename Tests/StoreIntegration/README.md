@@ -52,6 +52,9 @@ do not reintroduce this forwarding without a signed-device launch and playback t
 There is no bundle-identifier exception for ryP0 in `LCAppModel.runApp`,
 `FullScreenGuestSession`, or the native switcher. Its special handling provisions
 the bundled IPA, places it in the initial layout, and supports a notification test.
+The bundled installer formerly disabled `spoofSDKVersion` specifically for ryP0.
+It now enables it like other apps; a one-time migration also updates existing
+visible and hidden ryP0 installations without overriding later manual changes.
 All ordinary hosted guests use the same opening zoom, first-frame handshake,
 cover dismissal, and switcher transitions. Classic mode, window mode, 32-bit/JIT
 requirements, cold versus resumed launches, and the guest's first-frame timing
