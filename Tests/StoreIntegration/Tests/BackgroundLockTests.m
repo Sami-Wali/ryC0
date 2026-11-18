@@ -29,7 +29,7 @@
     @try {
         XCTAssertEqual(sqlite3_exec(database, "CREATE TABLE sample (value); BEGIN EXCLUSIVE; INSERT INTO sample VALUES (1);", NULL, NULL, NULL), SQLITE_OK);
         Dead10ccFix *fix = [Dead10ccFix new];
-        [fix handleAppDidEnterBackgroundReal];
+        [fix handleAppDidEnterBackground:nil];
         unsigned char allowed = 0;
         XCTAssertEqual(getxattr(path.fileSystemRepresentation, "com.apple.runningboard.can-suspend-locked", &allowed, sizeof(allowed), 0, 0), 1);
         XCTAssertEqual(allowed, 1);
