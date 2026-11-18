@@ -15,38 +15,66 @@
 #include <spawn.h>
 #include <dlfcn.h>
 @import Foundation;
+@import UIKit;
+@import AVFoundation;
 
 //extern int _sqlite3_lockstate(const char *path, int pid);
 
 @interface Dead10ccFix : NSObject
 @property(nonatomic) BOOL methodInited;
 @property(nonatomic) int deboundeToken;
+@property(nonatomic) BOOL waitingForTasks;
+- (void)observeBackgroundForLiveProcess:(BOOL)liveProcess;
+- (void)handleAudioInterruption:(NSNotification *)notification;
+- (BOOL)isInBackground;
 - (void)handleAppDidEnterBackground:(NSNotification *)notification;
 - (void)_handleTaskCompletionAndTerminate:(id)arg1;
 @end
-@interface UIApplication : NSObject
-@property (nonatomic, readonly) NSTimeInterval backgroundTimeRemaining;
-+ (instancetype)sharedApplication;
-- (int)applicationState;
-@end
-
 Dead10ccFix* fix = nil;
 
 void initDead10ccFix(void) {
-
-    if(NSUserDefaults.isLiveProcess) {
-        fix = [[Dead10ccFix alloc] init];
-        [NSNotificationCenter.defaultCenter addObserver:fix selector:@selector(handleAppDidEnterBackground:) name:NSExtensionHostDidEnterBackgroundNotification object:nil];
-    } else if (NSUserDefaults.isSharedApp){
-        fix = [[Dead10ccFix alloc] init];
-        [NSNotificationCenter.defaultCenter addObserver:fix selector:@selector(handleAppDidEnterBackground:) name:@"UIApplicationDidEnterBackgroundNotification" object:nil];
-    }
+    if (!NSUserDefaults.isLiveProcess && !NSUserDefaults.isSharedApp) return;
+    fix = [[Dead10ccFix alloc] init];
+    [fix observeBackgroundForLiveProcess:NSUserDefaults.isLiveProcess];
 }
 
-
-
-
 @implementation Dead10ccFix
+
+- (void)observeBackgroundForLiveProcess:(BOOL)liveProcess {
+    NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
+    // Scene-hosted guests receive UIKit lifecycle events. The modern host
+    // deliberately removes NSExtension's host-background forwarding.
+    [center addObserver:self selector:@selector(handleAppDidEnterBackground:)
+                   name:UIApplicationDidEnterBackgroundNotification object:nil];
+    if (liveProcess) {
+        [center addObserver:self selector:@selector(handleAppDidEnterBackground:)
+                       name:NSExtensionHostDidEnterBackgroundNotification object:nil];
+    }
+    [center addObserver:self selector:@selector(handleAudioInterruption:)
+                   name:AVAudioSessionInterruptionNotification object:nil];
+}
+
+- (void)dealloc {
+    [NSNotificationCenter.defaultCenter removeObserver:self];
+}
+
+- (BOOL)isInBackground {
+    return UIApplication.sharedApplication.applicationState == UIApplicationStateBackground;
+}
+
+- (void)handleAudioInterruption:(NSNotification *)notification {
+    if ([notification.userInfo[AVAudioSessionInterruptionTypeKey] unsignedIntegerValue] != AVAudioSessionInterruptionTypeBegan) return;
+    if (!NSThread.isMainThread) {
+        dispatch_async(dispatch_get_main_queue(), ^{ [self handleAudioInterruption:notification]; });
+        return;
+    }
+    // Losing the audio assertion can suspend an already-backgrounded guest
+    // without a second didEnterBackground notification. Protect its current
+    // locks now; never reactivate audio or override the guest's pause handler.
+    if ([self isInBackground]) {
+        [self handleAppDidEnterBackground:notification];
+    }
+}
 
 - (void)handleAppDidEnterBackgroundReal {
     NSSet* locks = [self _lock_lockedFilePathsIgnoring:[NSMutableSet set]];
@@ -155,7 +183,7 @@ void initDead10ccFix(void) {
             }
         }
         int (*_sqlite3_lockstate)(char*, int) = dlsym(RTLD_DEFAULT, "_sqlite3_lockstate");
-        int sqlite_lock = _sqlite3_lockstate(path_c, pid);
+        int sqlite_lock = _sqlite3_lockstate ? _sqlite3_lockstate(path_c, pid) : -1;
         if (sqlite_lock == 0) {
             // _rbs_process_log with %{public}@ Ignoring unlocked SQLite database: %{public}@
 //            NSLog(@"Ignoring unlocked SQLite database: %@", path);
@@ -196,19 +224,30 @@ void initDead10ccFix(void) {
 }
 
 - (void)handleAppDidEnterBackground:(NSNotification *)notification {
+    if (!NSThread.isMainThread) {
+        dispatch_async(dispatch_get_main_queue(), ^{ [self handleAppDidEnterBackground:notification]; });
+        return;
+    }
+    // Do not wait for a pending background task to finish before protecting
+    // locks: an audio interruption may be the last execution opportunity.
+    [self handleAppDidEnterBackgroundReal];
+    if (self.waitingForTasks) return;
     if(!_methodInited) {
-        _methodInited = YES;
         // hack: steal -[UIApplication _handleTaskCompletionAndTerminate:]
         Class class = NSClassFromString(@"UIApplication");
         SEL sel = @selector(_handleTaskCompletionAndTerminate:);
         Method method = class_getInstanceMethod(class, sel);
+        if (!method) return;
         class_addMethod(Dead10ccFix.class, sel, method_getImplementation(method), method_getTypeEncoding(method));
+        _methodInited = YES;
     }
+    self.waitingForTasks = YES;
     // this will call _UIApplicationCallWhenBackgroundTaskCountReachesZero which calls _terminateWithStatus: when no background tasks are left
     [self _handleTaskCompletionAndTerminate:self];
 }
 
 - (void)_terminateWithStatus:(int)status {
+    self.waitingForTasks = NO;
     // Fake implementation from UIApplication
 //    NSLog(@"[LC] _handleTaskCompletionAndTerminate");
     [self handleAppDidEnterBackgroundReal];
@@ -220,7 +259,7 @@ void initDead10ccFix(void) {
             if(self.deboundeToken != curToken) {
                 return;
             }
-            [self _handleTaskCompletionAndTerminate:self];
+            [self handleAppDidEnterBackground:nil];
         });
     }
 }

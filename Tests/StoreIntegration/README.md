@@ -42,10 +42,27 @@ lock/unlock, then return. Check uninterrupted playback and the same guest sessio
 including Now Playing/Live Activity updates. Repeat after returning to ryC0 Home,
 and verify that explicitly closing the guest still terminates it. Exercise both
 the legacy scene presenter and the hosting-controller API where available.
-Background playback remains unresolved. The experimental fullscreen scene-lifecycle
-forwarding was reverted after a device report of crashes when opening any guest.
-The presenter and extension notification behavior match the pre-change implementation;
-do not reintroduce this forwarding without a signed-device launch and playback test.
+The experimental fullscreen scene-lifecycle forwarding remains reverted.
+A locally available November 17 device crash identifies YouTube Music inside
+LiveProcess with RUNNINGBOARD termination 3735883980 (`0xdead10cc`, a file-lock
+suspension kill). Guest lock protection previously observed only the extension
+host-background notification, which modern scene hosting does not forward.
+It now also observes UIKit background entry and audio interruption while in the
+background, scanning locks immediately and coalescing outstanding task waits.
+It does not activate audio or change the host presenter.
+
+`BackgroundLockTests` compiles the actual guest protection implementation into the
+isolated test host. It checks UIKit/legacy notification delivery, an interruption
+without a second background event, ignored interruption-end/foreground events,
+and the suspension attribute on an actual exclusively locked SQLite database.
+The simulator cannot verify RunningBoard's physical-device suspension policy.
+
+For the reported regression, start YouTube Music playback, switch to TikTok and
+start its audio. YouTube Music should pause, remain resumable, and return to the
+same session rather than cold-launch. Wait at least 15 seconds, return and resume,
+and inspect for a new `0xdead10cc` report. Dynamic Island visibility alone is not
+a reliable process-liveness assertion. Repeat with screen locking and with another
+media app. Do not publish crash reports containing device/container identifiers.
 
 ## ryP0 launch investigation
 
