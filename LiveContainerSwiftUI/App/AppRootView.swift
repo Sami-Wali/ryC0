@@ -16,6 +16,7 @@ struct AppRootView: View {
     @Environment(AppLaunchCoordinator.self) private var coordinator
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isOpeningFromSwitcher = false
+    @State private var switcherPresentationGate: RYGuestPresentationGate?
     @Namespace private var zoomNamespace
 
     var body: some View {
@@ -28,8 +29,10 @@ struct AppRootView: View {
                 .accessibilityHidden(onboarding.isPresented || home.showsAppSwitcher)
 
             if home.showsAppSwitcher {
-                AppSwitcherView(zoomNamespace: zoomNamespace, open: openSwitcherSelection, goHome: dismissSwitcher)
-                    .transition(.opacity)
+                AppSwitcherView(zoomNamespace: zoomNamespace, open: openSwitcherSelection,
+                                didFinishOpening: { switcherPresentationGate?.open() }, goHome: dismissSwitcher)
+                    .id(home.switcherPresentationID)
+                    .transition(.identity)
                     .zIndex(1)
             }
 
@@ -45,7 +48,6 @@ struct AppRootView: View {
                     .zIndex(3)
             }
         }
-        .animation(.easeOut(duration: reduceMotion ? 0.12 : 0.24), value: home.showsAppSwitcher)
         .modifier(HomeScreenPresentation(model: home, zoomNamespace: zoomNamespace))
         .onChange(of: onboarding.isPresented, onboardingChanged)
         .onReceive(MainWindow.guestErrors) { coordinator.errorMessage = $0 }
@@ -64,9 +66,15 @@ struct AppRootView: View {
         guard home.showsAppSwitcher, !isOpeningFromSwitcher, let key = app.homeKey,
               home.apps[key] === app, !app.appInfo.isHidden else { return }
         isOpeningFromSwitcher = true
+        let gate = RYGuestPresentationGate()
+        switcherPresentationGate = gate
         Task {
-            defer { isOpeningFromSwitcher = false }
-            await coordinator.open(app, containerFolderName: container, zoomOrigin: GuestZoomOrigin(cardFrame: frame)) {
+            defer {
+                isOpeningFromSwitcher = false
+                switcherPresentationGate = nil
+            }
+            await coordinator.open(app, containerFolderName: container, zoomOrigin: GuestZoomOrigin(cardFrame: frame, presentationGate: gate)) {
+                await gate.wait()
                 await withCheckedContinuation { continuation in
                     withAnimation(.easeOut(duration: 0.16)) {
                         dismissSwitcher()
@@ -76,6 +84,7 @@ struct AppRootView: View {
                 }
                 home.prepareClassicReturn(page: home.page ?? 0, iconFrame: home.iconFrame(of: .app(key)))
             }
+            await gate.wait()
             // A native/virtual window can come forward without using the full-screen stage.
             if #available(iOS 18.0, *), FullScreenGuestSession.shared.isPresenting(bundle: app.appInfo.relativeBundlePath) { return }
             if home.showsAppSwitcher { dismissSwitcher() }

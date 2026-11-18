@@ -26,7 +26,9 @@ async function build() {
   if (process.platform === 'darwin') {
     await run('xcodebuild', ['-version']);
   }
-  await run('git', ['submodule', 'update', '--init', '--recursive']);
+  if (process.env.RYC0_SKIP_SUBMODULE_UPDATE !== '1') {
+    await run('git', ['submodule', 'update', '--init', '--recursive']);
+  }
 
   if (process.platform === 'linux') {
     await run('bash', [path.join(root, 'Scripts/ryc0/build.sh')]);
@@ -47,13 +49,15 @@ async function build() {
       '-destination', 'generic/platform=iOS',
       '-derivedDataPath', path.join(outputDirectory, 'DerivedData'),
       '-archivePath', archive,
+      'CODE_SIGNING_ALLOWED=NO',
     ]);
 
-    // Keep the project's ad-hoc signatures and entitlements for the sideloader.
     // A fresh Payload prevents removed extensions or resources from surviving.
     const payload = path.join(staging, 'Payload');
     const packagedIPA = path.join(staging, 'ryC0.ipa');
     await run('ditto', ['--norsrc', '--noextattr', path.join(archive, 'Products/Applications'), payload]);
+    await run('python3', [path.join(root, 'Scripts/prepare-ipa.py'), payload]);
+    await run('python3', [path.join(root, 'Scripts/ryc0/verify_sig.py'), '--unsigned-ok', payload]);
     await run('ditto', ['-c', '-k', '--norsrc', '--noextattr', '--keepParent', payload, packagedIPA]);
 
     const output = path.join(outputDirectory, 'ryC0.ipa');

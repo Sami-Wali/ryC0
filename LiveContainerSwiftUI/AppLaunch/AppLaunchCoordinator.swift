@@ -526,8 +526,8 @@ final class AppLaunchCoordinator {
             return .replaced(newAppModel)
         }
 
-        // The bundled store is built for this host and uses its original SDK.
-        finalNewApp.spoofSDKVersion = policy != .bundledStore
+        // All installed guests use their own SDK version, including bundled ryP0.
+        finalNewApp.spoofSDKVersion = true
         finalNewApp.installationDate = Date.now
         newAppModel = LCAppModel(appInfo: finalNewApp, delegate: self)
         sharedModel.apps.append(newAppModel)

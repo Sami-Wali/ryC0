@@ -1,18 +1,97 @@
 import SwiftUI
 import UIKit
 
+#if DEBUG
+private enum GuestLaunchDiagnostics {
+    static let writes = DispatchQueue(label: "com.ry0.ryC0.launch-trace")
+    static var ended = false
+}
+#endif
+
+private func traceGuestLaunch(_ event: String) {
+#if DEBUG
+    let line = String(format: "[ryC0 launch] %.3f %@\n", CACurrentMediaTime(), event)
+    NSLog("%@", line)
+    guard ProcessInfo.processInfo.arguments.contains("--ryc0-debug-keep-awake") else { return }
+    GuestLaunchDiagnostics.writes.async {
+        let file = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("ryc0-launch.log")
+        if !FileManager.default.fileExists(atPath: file.path) {
+            FileManager.default.createFile(atPath: file.path, contents: nil)
+        }
+        guard let handle = try? FileHandle(forWritingTo: file) else { return }
+        defer { try? handle.close() }
+        _ = try? handle.seekToEnd()
+        try? handle.write(contentsOf: Data(line.utf8))
+    }
+#endif
+}
+
 struct GuestZoomOrigin {
     let frame: CGRect
     let cornerRadius: CGFloat
+    let isSwitcher: Bool
+    let presentationGate: RYGuestPresentationGate?
 
     init(iconFrame: CGRect) {
         frame = iconFrame
         cornerRadius = iconFrame.width * HomeDesign.iconCornerFraction
+        isSwitcher = false
+        presentationGate = nil
     }
 
-    init(cardFrame: CGRect) {
+    init(cardFrame: CGRect, presentationGate: RYGuestPresentationGate? = nil) {
         frame = cardFrame
-        cornerRadius = RYSwitcherLayout.cornerRadius(for: cardFrame)
+        cornerRadius = min(cardFrame.width, cardFrame.height) * 0.16
+        isSwitcher = true
+        self.presentationGate = presentationGate
+    }
+}
+
+/// Process startup and the native card animation can finish in either order.
+/// Only the handoff waits; the guest is free to prepare its first frame.
+@MainActor
+final class RYGuestPresentationGate {
+    private(set) var isOpen = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    func wait() async {
+        guard !isOpen else { return }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func open() {
+        guard !isOpen else { return }
+        isOpen = true
+        let pending = waiters
+        waiters.removeAll()
+        for waiter in pending { waiter.resume() }
+    }
+}
+
+@MainActor
+final class RYClockTapAction {
+    private var pending: Task<Void, Never>?
+
+    deinit { pending?.cancel() }
+
+    func tap(home: @escaping @MainActor () -> Void, switcher: @escaping @MainActor () -> Void) {
+        if pending != nil {
+            cancel()
+            switcher()
+            return
+        }
+        pending = Task { [weak self] in
+            do { try await Task.sleep(for: .milliseconds(280)) }
+            catch { return }
+            guard let self else { return }
+            self.pending = nil
+            home()
+        }
+    }
+
+    func cancel() {
+        pending?.cancel()
+        pending = nil
     }
 }
 
@@ -59,11 +138,40 @@ struct FullScreenGuestStage: View {
 }
 
 final class GuestStageController: UIViewController {
+#if DEBUG
+    private static var debugControlsInstalled = false
+#endif
     var homeOrigin: ((String) -> GuestZoomOrigin?)?
     var presentGuest: ((String) -> Void)?
     var dismissGuest: (() -> Void)?
 
     override func loadView() { view = GuestStageView() }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+#if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ryc0-debug-keep-awake"), !GuestLaunchDiagnostics.ended {
+            UIApplication.shared.isIdleTimerDisabled = true
+            if !Self.debugControlsInstalled {
+                Self.debugControlsInstalled = true
+                for name in ["com.ry0.ryC0.debug.home", "com.ry0.ryC0.debug.switcher", "com.ry0.ryC0.debug.end"] {
+                    CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), nil, { _, _, name, _, _ in
+                        let command = name?.rawValue as String?
+                        DispatchQueue.main.async {
+                            if command?.hasSuffix(".end") == true {
+                                GuestLaunchDiagnostics.ended = true
+                                UIApplication.shared.isIdleTimerDisabled = false
+                                try? FileManager.default.removeItem(atPath: NSTemporaryDirectory() + "ryc0-first-frame.jpg")
+                            } else if !GuestLaunchDiagnostics.ended {
+                                FullScreenGuestSession.shared.returnHome(openSwitcher: command?.hasSuffix(".switcher") == true)
+                            }
+                        }
+                    }, name as CFString, nil, .deliverImmediately)
+                }
+            }
+        }
+#endif
+    }
 
     private final class GuestStageView: UIView {
         override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
@@ -86,6 +194,11 @@ struct FullScreenGuestCover: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: Controller, context: Context) {}
 
     final class Controller: UIViewController {
+        override func viewDidAppear(_ animated: Bool) {
+            super.viewDidAppear(animated)
+            FullScreenGuestSession.shared.nativeCoverDidAppear(self)
+        }
+
         override func viewWillDisappear(_ animated: Bool) {
             super.viewWillDisappear(animated)
             FullScreenGuestSession.shared.nativeCoverWillDisappear(self)
@@ -112,9 +225,16 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
     private var pendingLaunch: CheckedContinuation<Int32, Error>?
     private var launchTimeout: Task<Void, Never>?
     private var firstFrameTimeout: Task<Void, Never>?
+    private var pendingPresentation: Task<Void, Never>?
+    private var openingSnapshotTimeout: Task<Void, Never>?
+    private var nativeCoverIsVisible = false
+    private var hasPresentedGuest = false
+    private var openingZoom = false
     private var presentationID = UUID()
     private var returning = false
     private var reopensAfterReturn = false
+    private let clockTap = RYClockTapAction()
+    private let clockFeedback = UIImpactFeedbackGenerator(style: .light)
 
     var runningBundlePath: String? {
         guard let guest, guest.isAppRunning else { return nil }
@@ -122,12 +242,13 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
     }
 
     func isPresenting(bundle: String?) -> Bool {
-        guest?.bundleId == bundle && (isGuestVisible || firstFrameTimeout != nil)
+        guest?.bundleId == bundle && (isGuestVisible || firstFrameTimeout != nil || pendingPresentation != nil)
     }
 
     func resume(bundle: String, container: String, url: String?, from origin: GuestZoomOrigin? = nil) -> Bool {
         guard let guest, guest.bundleId == bundle, guest.dataUUID == container,
               guest.isAppRunning, pendingLaunch == nil else { return false }
+        traceGuestLaunch("resuming guest")
         if let url { guest.openURLScheme(url) }
         if #available(iOS 18.0, *), returning {
             reopensAfterReturn = true
@@ -147,6 +268,7 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
         }
 
         starting = true
+        traceGuestLaunch("starting guest preparation: \(bundle)")
         defer { starting = false }
         if let previous = guest { removeGuest(previous) }
         if let previous = retiringGuest {
@@ -162,6 +284,7 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
         try Task.checkCancellation()
 
         return try await withCheckedThrowingContinuation { continuation in
+            traceGuestLaunch("starting guest process")
             pendingLaunch = continuation
             launchOrigin = origin
             guard let controller = AppSceneViewController(bundleId: bundle, dataUUID: container,
@@ -171,6 +294,7 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
             }
 
             guest = controller
+            hasPresentedGuest = false
             self.container = container
             MultitaskManager.shared.fullScreenContainer = container
 
@@ -197,16 +321,71 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
 
     private func showGuest(from origin: GuestZoomOrigin?) {
         guard let guest, let surface, let stage else { return }
+        if let gate = origin?.presentationGate, !gate.isOpen {
+            traceGuestLaunch("waiting for native expansion")
+            pendingPresentation?.cancel()
+            pendingPresentation = Task { [weak self, weak guest] in
+                await gate.wait()
+                guard !Task.isCancelled, let self, let guest, self.guest === guest else { return }
+                self.pendingPresentation = nil
+                self.showGuest(from: origin)
+            }
+            return
+        }
+        pendingPresentation = nil
+        traceGuestLaunch("presenting guest")
+        launchOrigin = nil
+        if #available(iOS 18.0, *), canShowPreview(for: guest.bundleId) {
+            // A cold launch must never zoom an old, ready screen into a new
+            // loading screen. Only a resumed process can reuse its last preview.
+            let image = hasPresentedGuest
+                ? container.flatMap { previews[$0] }
+                : guest.takeHostedGuestFirstFrameImage()
+            let snapshot: UIView? = image.map { UIImageView(image: $0) as UIView }
+            if let snapshot { surface.holdOpeningSnapshot(snapshot) }
+            traceGuestLaunch("opening bitmap ready: \(image != nil), resumed: \(hasPresentedGuest)")
+        }
+        hasPresentedGuest = true
         configureReturnControl(for: guest, on: surface)
         if #available(iOS 18.0, *) {
             guard let bundle = guest.bundleId else { return }
             returning = false
             isGuestVisible = true
             guest.setHostedGuestVisible(true)
-            stage.presentGuest?(bundle)
+            let presentCover = {
+                var transaction = Transaction(animation: nil)
+                transaction.disablesAnimations = true
+                withTransaction(transaction) { stage.presentGuest?(bundle) }
+            }
+            if origin?.isSwitcher == true { presentCover(); return }
+
+            // SwiftUI can lose the matched icon while startup updates Home.
+            // Own the opening zoom; hand the fully expanded surface to the
+            // native cover afterward, preserving its normal closing gesture.
+            mount(guest, surface: surface, in: stage)
+            let id = UUID()
+            presentationID = id
+            openingZoom = true
+            traceGuestLaunch("icon zoom started")
+            surface.open(from: origin ?? stage.homeOrigin?(bundle), in: stage.view.bounds) { [weak self, weak guest] in
+                guard let self, self.presentationID == id, let guest, self.guest === guest else { return }
+                self.openingZoom = false
+                traceGuestLaunch("icon zoom finished")
+                presentCover()
+            }
             return
         }
         let bounds = stage.view.bounds
+        if origin?.isSwitcher == true {
+            surface.reset(in: bounds)
+            surface.alpha = 1
+            surface.isHidden = false
+            surface.isUserInteractionEnabled = true
+            surface.accessibilityElementsHidden = false
+            isGuestVisible = true
+            guest.setHostedGuestVisible(true)
+            return
+        }
         let id = UUID()
         presentationID = id
         returning = false
@@ -262,11 +441,33 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
 
     func nativeCoverWillDisappear(_ cover: UIViewController) {
         guard let guest, guest.parent === cover, !returning else { return }
+        clockTap.cancel()
         capturePreview(of: guest)
+    }
+
+    func nativeCoverDidAppear(_ cover: UIViewController) {
+        guard let guest, guest.parent === cover, isGuestVisible else { return }
+        nativeCoverIsVisible = true
+        traceGuestLaunch("guest cover finished opening")
+        if guest.hostedGuestHasDrawn {
+            surface?.releaseOpeningSnapshot(animated: true)
+        } else {
+            openingSnapshotTimeout?.cancel()
+            openingSnapshotTimeout = Task { [weak self, weak guest] in
+                try? await Task.sleep(for: .seconds(2))
+                guard !Task.isCancelled, let self, let guest, self.guest === guest else { return }
+                self.surface?.releaseOpeningSnapshot(animated: true)
+            }
+        }
     }
 
     func nativeCoverDidClose() {
         guard isGuestVisible, let guest, let surface else { return }
+        nativeCoverIsVisible = false
+        openingZoom = false
+        openingSnapshotTimeout?.cancel()
+        openingSnapshotTimeout = nil
+        surface.releaseOpeningSnapshot(animated: false)
         isGuestVisible = false
         returning = false
         surface.isHidden = true
@@ -291,6 +492,14 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
 
     private func removeGuest(_ controller: AppSceneViewController, terminate: Bool = true) {
         guard guest === controller else { return }
+        openingZoom = false
+        presentationID = UUID()
+        pendingPresentation?.cancel()
+        pendingPresentation = nil
+        openingSnapshotTimeout?.cancel()
+        openingSnapshotTimeout = nil
+        nativeCoverIsVisible = false
+        clockTap.cancel()
         if #available(iOS 18.0, *), isGuestVisible { stage?.dismissGuest?() }
         firstFrameTimeout?.cancel()
         firstFrameTimeout = nil
@@ -318,7 +527,7 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
     private func finishLaunch(_ result: Result<Int32, Error>) {
         launchTimeout?.cancel()
         launchTimeout = nil
-        launchOrigin = nil
+        if case .failure = result { launchOrigin = nil }
         let continuation = pendingLaunch
         pendingLaunch = nil
         continuation?.resume(with: result)
@@ -334,13 +543,18 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
             return
         }
         guard guest === vc, pendingLaunch != nil else { return }
+        traceGuestLaunch("guest process initialized")
         if #available(iOS 18.0, *), !vc.hostedGuestHasDrawn {
             // JIT may need the PID before the guest can draw. Keep Home
-            // visible until the guest has a frame or the short wait expires.
+            // visible until this launch has a frame. A timeout is a launch
+            // failure, never permission to zoom an empty remote surface open.
             firstFrameTimeout = Task { [weak self, weak vc] in
-                try? await Task.sleep(for: .seconds(2))
-                guard !Task.isCancelled, let vc else { return }
-                self?.appSceneVCGuestDidDraw(vc)
+                try? await Task.sleep(for: .seconds(30))
+                guard !Task.isCancelled, let self, let vc, self.guest === vc else { return }
+                traceGuestLaunch("first frame timed out")
+                self.firstFrameTimeout = nil
+                MainWindow.guestErrors.send("The app did not draw its first frame. Try opening it again.")
+                self.removeGuest(vc)
             }
         } else {
             showGuest(from: launchOrigin)
@@ -349,10 +563,19 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
     }
 
     func appSceneVCGuestDidDraw(_ vc: AppSceneViewController!) {
-        guard guest === vc, firstFrameTimeout != nil else { return }
+        guard guest === vc else { return }
+        traceGuestLaunch("first guest frame")
+        if firstFrameTimeout == nil {
+            if nativeCoverIsVisible {
+                openingSnapshotTimeout?.cancel()
+                openingSnapshotTimeout = nil
+                surface?.releaseOpeningSnapshot(animated: true)
+            }
+            return
+        }
         firstFrameTimeout?.cancel()
         firstFrameTimeout = nil
-        showGuest(from: nil)
+        showGuest(from: launchOrigin)
     }
 
     func appSceneVCAppDidExit(_ vc: AppSceneViewController!) {
@@ -368,7 +591,11 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
     func returnFromClockTap() -> Bool {
         guard isGuestVisible, surface?.returnMode == .clock, !returning,
               surface?.window?.windowScene?.activationState == .foregroundActive else { return false }
-        returnHome(openSwitcher: false)
+        clockFeedback.impactOccurred()
+        clockFeedback.prepare()
+        // Both the system status bar and the transparent overlay use this path.
+        clockTap.tap(home: { [weak self] in self?.returnHome(openSwitcher: false) },
+                     switcher: { [weak self] in self?.returnHome(openSwitcher: true) })
         return true
     }
 
@@ -409,11 +636,20 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
         button.accessibilityIdentifier = "ryc0.guest.home"
         button.accessibilityLabel = "ryc0.home.homeButton".loc
         button.addAction(UIAction { [weak self] _ in
-            self?.returnHome(openSwitcher: false)
+            if mode == .clock { _ = self?.returnFromClockTap() }
+            else { self?.returnHome(openSwitcher: false) }
         }, for: .touchUpInside)
+        button.accessibilityCustomActions = [
+            UIAccessibilityCustomAction(name: "ryc0.switcher.title".loc) { [weak self] _ in
+                self?.returnHome(openSwitcher: true)
+                return true
+            }
+        ]
         surface.addSubview(button)
 
         if mode == .clock {
+            clockFeedback.prepare()
+            button.addAction(UIAction { [weak self] _ in self?.clockFeedback.prepare() }, for: .touchDown)
             let safeTop = button.bottomAnchor.constraint(equalTo: surface.safeAreaLayoutGuide.topAnchor)
             safeTop.priority = .defaultHigh
             NSLayoutConstraint.activate([
@@ -426,12 +662,6 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
             return button
         }
 
-        button.accessibilityCustomActions = [
-            UIAccessibilityCustomAction(name: "ryc0.switcher.title".loc) { [weak self] _ in
-                self?.returnHome(openSwitcher: true)
-                return true
-            }
-        ]
         button.backgroundColor = UIColor.black.withAlphaComponent(0.45)
         button.layer.cornerRadius = 15
         let bar = UIView()
@@ -472,7 +702,21 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
     }
 
     func returnHome(openSwitcher: Bool) {
+        clockTap.cancel()
         if #available(iOS 18.0, *) {
+            if openingZoom, let guest, let surface {
+                presentationID = UUID()
+                openingZoom = false
+                surface.layer.removeAllAnimations()
+                surface.content.layer.removeAllAnimations()
+                surface.isHidden = true
+                surface.releaseOpeningSnapshot(animated: false)
+                guest.setHostedGuestVisible(false)
+                unmount(guest, surface: surface)
+                isGuestVisible = false
+                MainWindow.homeRequests.send(openSwitcher)
+                return
+            }
             if firstFrameTimeout != nil, let guest, let surface {
                 firstFrameTimeout?.cancel()
                 firstFrameTimeout = nil
@@ -483,12 +727,47 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
             }
             guard let guest, isGuestVisible, !returning else { return }
             returning = true
-            capturePreview(of: guest)
-            MainWindow.homeRequests.send(openSwitcher)
+            if openSwitcher {
+                prepareSwitcherEntry(from: guest) {
+                    guard let surface = self.surface else { return }
+                    surface.isUserInteractionEnabled = false
+                    surface.accessibilityElementsHidden = true
+                    surface.accessibilityViewIsModal = false
+                    surface.isHidden = true
+                    guest.setHostedGuestVisible(false)
+                    self.unmount(guest, surface: surface)
+                    self.isGuestVisible = false
+                    self.nativeCoverIsVisible = false
+                    self.openingSnapshotTimeout?.cancel()
+                    self.openingSnapshotTimeout = nil
+                    surface.releaseOpeningSnapshot(animated: false)
+                    self.returning = false
+                    var transaction = Transaction(animation: nil)
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) {
+                        self.stage?.dismissGuest?()
+                        MainWindow.homeRequests.send(true)
+                    }
+                }
+            } else {
+                capturePreview(of: guest)
+                MainWindow.homeRequests.send(false)
+            }
             return
         }
         guard let guest, let surface, let stage, !surface.isHidden, !returning else { return }
         returning = true
+        if openSwitcher {
+            prepareSwitcherEntry(from: guest) {
+                surface.isHidden = true
+                surface.accessibilityElementsHidden = true
+                self.isGuestVisible = false
+                guest.setHostedGuestVisible(false)
+                MainWindow.homeRequests.send(true)
+                self.returning = false
+            }
+            return
+        }
         let bounds = stage.view.bounds
         let id = UUID()
         presentationID = id
@@ -502,8 +781,6 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
         let origin: GuestZoomOrigin?
         if UIAccessibility.isReduceMotionEnabled {
             origin = nil
-        } else if openSwitcher {
-            origin = GuestZoomOrigin(cardFrame: RYSwitcherLayout.cardFrame(in: bounds))
         } else {
             origin = guest.bundleId.flatMap { stage.homeOrigin?($0) }
         }
@@ -537,9 +814,23 @@ final class FullScreenGuestSession: NSObject, ObservableObject, @preconcurrency 
         }
     }
 
-    private func capturePreview(of guest: AppSceneViewController) {
-        guard let bundle = guest.bundleId, canShowPreview(for: bundle) else { return }
+    private func prepareSwitcherEntry(from guest: AppSceneViewController, ready: @escaping @MainActor () -> Void) {
+        var finished = false
+        let complete = { [weak self, weak guest] in
+            guard !finished, let self, let guest, self.guest === guest else { return }
+            finished = true
+            ready()
+        }
+        capturePreview(of: guest, completion: complete)
+        // The current scene stays visible until its preview arrives. A guest
+        // that cannot supply an image still gets a bounded, responsive return.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: complete)
+    }
+
+    private func capturePreview(of guest: AppSceneViewController, completion: (() -> Void)? = nil) {
+        guard let bundle = guest.bundleId, canShowPreview(for: bundle) else { completion?(); return }
         guest.requestHostedGuestPreview { [weak self, weak guest] image in
+            defer { completion?() }
             guard let self, let guest, self.guest === guest, let image, let container = guest.dataUUID,
                   self.canShowPreview(for: bundle) else { return }
             self.previews[container] = image
@@ -561,12 +852,13 @@ private struct GuestFloatingHomeButton: View {
 
 /// Keep the hosted scene at its native size while the visible viewport zooms.
 /// The contents keep their aspect ratio as the rounded mask shrinks to an icon.
-private final class GuestZoomSurface: UIView {
+final class GuestZoomSurface: UIView {
     let content = UIView()
     weak var returnControl: UIView?
     var returnMode: LCGuestHomeControl?
-    var floatingControl: UIHostingController<GuestFloatingHomeButton>?
+    fileprivate var floatingControl: UIHostingController<GuestFloatingHomeButton>?
     private var isDraggingControl = false
+    private var openingSnapshot: UIView?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -581,6 +873,55 @@ private final class GuestZoomSurface: UIView {
 
     required init?(coder: NSCoder) { nil }
 
+    func open(from proposedOrigin: GuestZoomOrigin?, in fullBounds: CGRect, completion: @escaping () -> Void) {
+        let origin = UIAccessibility.isReduceMotionEnabled ? nil
+            : proposedOrigin.flatMap { fullBounds.intersects($0.frame) ? $0 : nil }
+        UIView.performWithoutAnimation {
+            reset(in: fullBounds)
+            autoresizesSubviews = false
+            move(to: origin, in: fullBounds)
+            alpha = origin == nil ? 0 : 1
+            returnControl?.alpha = 0
+            isHidden = false
+            isUserInteractionEnabled = true
+            accessibilityElementsHidden = false
+            accessibilityViewIsModal = true
+            layoutIfNeeded()
+        }
+        UIView.animate(withDuration: origin == nil ? 0.16 : 0.42, delay: 0,
+                       usingSpringWithDamping: 0.88, initialSpringVelocity: 0,
+                       options: [.beginFromCurrentState, .allowUserInteraction]) {
+            self.alpha = 1
+            self.returnControl?.alpha = 1
+            self.move(to: nil, in: fullBounds)
+        } completion: { finished in
+            guard finished else { return }
+            self.reset(in: fullBounds)
+            completion()
+        }
+    }
+
+    func holdOpeningSnapshot(_ snapshot: UIView) {
+        releaseOpeningSnapshot(animated: false)
+        snapshot.frame = content.bounds
+        snapshot.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        snapshot.isUserInteractionEnabled = true
+        snapshot.accessibilityElementsHidden = true
+        if let image = snapshot as? UIImageView { image.contentMode = .scaleAspectFill; image.clipsToBounds = true }
+        content.addSubview(snapshot)
+        openingSnapshot = snapshot
+        // The opaque bitmap keeps the zoom stable. Leave the live scene
+        // visible underneath so reparenting doesn't suspend its remote surface
+        // and flash black when the cover takes over.
+    }
+
+    func releaseOpeningSnapshot(animated: Bool) {
+        guard let snapshot = openingSnapshot else { return }
+        openingSnapshot = nil
+        guard animated else { snapshot.removeFromSuperview(); return }
+        UIView.animate(withDuration: 0.12, animations: { snapshot.alpha = 0 }) { _ in snapshot.removeFromSuperview() }
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
         if !isDraggingControl, let control = floatingControl?.view {
@@ -588,7 +929,7 @@ private final class GuestZoomSurface: UIView {
         }
     }
 
-    func addFloatingControl(_ controller: UIHostingController<GuestFloatingHomeButton>, to parent: UIViewController?) {
+    fileprivate func addFloatingControl(_ controller: UIHostingController<GuestFloatingHomeButton>, to parent: UIViewController?) {
         floatingControl = controller
         let size = HomeDesign.homeButtonSize
         let control = controller.view!

@@ -30,3 +30,56 @@ xcodebuild -project "$test_project/RYStoreIntegration.xcodeproj" \
 ```
 
 The simulator verifies that ryP0 is unpacked and registered as a guest. Execution of the device IPA, the guest Home swipe, and Lock Screen or Dynamic Island rendering require a signed device build.
+
+## Background playback and empty switcher regression
+
+`testZZCloseAllAndRejectEmptySwitcher` closes every seeded card, repeatedly taps
+Apps with an empty list, and checks that the empty state survives relaunch.
+The simulator cannot verify the physical rejection haptic or guest audio.
+
+On a signed device, play audio in YouTube Music, leave ryC0 for another app,
+lock/unlock, then return. Check uninterrupted playback and the same guest session,
+including Now Playing/Live Activity updates. Repeat after returning to ryC0 Home,
+and verify that explicitly closing the guest still terminates it. Exercise both
+the legacy scene presenter and the hosting-controller API where available.
+The experimental fullscreen scene-lifecycle forwarding remains reverted.
+A locally available November 17 device crash identifies YouTube Music inside
+LiveProcess with RUNNINGBOARD termination 3735883980 (`0xdead10cc`, a file-lock
+suspension kill). Guest lock protection previously observed only the extension
+host-background notification, which modern scene hosting does not forward.
+It now also observes UIKit background entry and audio interruption while in the
+background, scanning locks immediately and coalescing outstanding task waits.
+It does not activate audio or change the host presenter.
+
+`BackgroundLockTests` compiles the actual guest protection implementation into the
+isolated test host. It checks UIKit/legacy notification delivery, an interruption
+without a second background event, ignored interruption-end/foreground events,
+and the suspension attribute on an actual exclusively locked SQLite database.
+The general lock scanner also covers WAL shared-memory locks and ordinary POSIX
+file locks regardless of filename. It queries existing descriptors using both
+process-owner and descriptor-owner lock queries, without reopening/closing files
+or relying on the private SQLite lock probe. Tests verify that scanning preserves
+the original lock. WAL/SHM and `-journal` filename cases failed before this change
+and pass after it; neither the guest nor the interrupting app is matched by name.
+The simulator cannot verify RunningBoard's physical-device suspension policy.
+
+For the reported regression, start YouTube Music playback, switch to TikTok and
+start its audio. YouTube Music should pause, remain resumable, and return to the
+same session rather than cold-launch. Wait at least 15 seconds, return and resume,
+and inspect for a new `0xdead10cc` report. Dynamic Island visibility alone is not
+a reliable process-liveness assertion. Repeat with screen locking and with another
+media app. Do not publish crash reports containing device/container identifiers.
+
+## ryP0 launch investigation
+
+There is no bundle-identifier exception for ryP0 in `LCAppModel.runApp`,
+`FullScreenGuestSession`, or the native switcher. Its special handling provisions
+the bundled IPA, places it in the initial layout, and supports a notification test.
+The bundled installer formerly disabled `spoofSDKVersion` specifically for ryP0.
+It now enables it like other apps; a one-time migration also updates existing
+visible and hidden ryP0 installations without overriding later manual changes.
+All ordinary hosted guests use the same opening zoom, first-frame handshake,
+cover dismissal, and switcher transitions. Classic mode, window mode, 32-bit/JIT
+requirements, cold versus resumed launches, and the guest's first-frame timing
+can select different behavior. Compare these settings and cold/resumed launches
+on the affected device before attributing its motion difference to the bundle ID.

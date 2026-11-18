@@ -16,5 +16,6 @@
 #include "../MultitaskSupport/PiPManager.h"
 #include "../MultitaskSupport/VirtualWindowsHostView.h"
 #include "../LiveContainer/FoundationPrivate.h"
+#include "Home/Switcher/RYNativeAppSwitcher.h"
 
 #endif /* LiveContainerSwiftUI_Bridging_Header_h_h */

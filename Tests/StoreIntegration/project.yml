@@ -18,6 +18,8 @@ targets:
     info:
       path: ${RYC0_REPO}/Tests/StoreIntegration/GeneratedInfo.plist
       properties:
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
         CFBundleURLTypes:
           - CFBundleURLSchemes: [ryc0]
         NSAppTransportSecurity:

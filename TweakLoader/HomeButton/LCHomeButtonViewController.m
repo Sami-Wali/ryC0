@@ -26,6 +26,8 @@ static const CGFloat LCHomeButtonFlingCarry = 0.12;
 @property (nonatomic) CGPoint dragOffset;
 // Counts touches, so a dimming planned before the last touch doesn't happen.
 @property (nonatomic) NSUInteger dimmingGeneration;
+@property (nonatomic, copy, nullable) dispatch_block_t pendingClockTap;
+@property (nonatomic) UIImpactFeedbackGenerator *clockFeedback;
 @end
 
 @implementation LCHomeButtonViewController
@@ -56,10 +58,13 @@ static const CGFloat LCHomeButtonFlingCarry = 0.12;
     if (self.homeControl == LCGuestHomeControlFloatingButton) return;
 
     if (self.homeControl == LCGuestHomeControlClock) {
+        self.clockFeedback = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleLight];
         UIButton *clock = [UIButton buttonWithType:UIButtonTypeCustom];
         clock.translatesAutoresizingMaskIntoConstraints = NO;
         clock.accessibilityLabel = @"ryc0.home.homeButton".loc;
-        [clock addTarget:self action:@selector(buttonPressed) forControlEvents:UIControlEventTouchUpInside];
+        clock.accessibilityCustomActions = button.accessibilityCustomActions;
+        [clock addTarget:self action:@selector(prepareClockFeedback) forControlEvents:UIControlEventTouchDown];
+        [clock addTarget:self action:@selector(clockPressed) forControlEvents:UIControlEventTouchUpInside];
         [self.view addSubview:clock];
         self.clockControl = clock;
         NSLayoutConstraint *safeTop = [clock.bottomAnchor constraintEqualToAnchor:self.view.safeAreaLayoutGuide.topAnchor];
@@ -148,6 +153,29 @@ static const CGFloat LCHomeButtonFlingCarry = 0.12;
     }
 }
 
+- (void)prepareClockFeedback {
+    [self.clockFeedback prepare];
+}
+
+- (void)clockPressed {
+    [self.clockFeedback impactOccurred];
+    [self.clockFeedback prepare];
+    if (self.pendingClockTap) {
+        dispatch_block_cancel(self.pendingClockTap);
+        self.pendingClockTap = nil;
+        if (self.switcherHandler) self.switcherHandler();
+        return;
+    }
+    __weak typeof(self) weakSelf = self;
+    dispatch_block_t singleTap = dispatch_block_create(0, ^{
+        typeof(self) self = weakSelf;
+        self.pendingClockTap = nil;
+        if (self.pressHandler) self.pressHandler();
+    });
+    self.pendingClockTap = singleTap;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 280 * NSEC_PER_MSEC), dispatch_get_main_queue(), singleTap);
+}
+
 - (void)handleSwiped:(UIPanGestureRecognizer *)gesture {
     CGPoint movement = [gesture translationInView:self.view];
     if (gesture.state == UIGestureRecognizerStateEnded && -movement.y > MAX(28, fabs(movement.x))) {
@@ -163,6 +191,8 @@ static const CGFloat LCHomeButtonFlingCarry = 0.12;
 
 - (BOOL)accessibilityOpenSwitcher:(nullable UIAccessibilityCustomAction *)action {
     if (!self.switcherHandler) return NO;
+    if (self.pendingClockTap) dispatch_block_cancel(self.pendingClockTap);
+    self.pendingClockTap = nil;
     [[[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium] impactOccurred];
     self.switcherHandler();
     return YES;
