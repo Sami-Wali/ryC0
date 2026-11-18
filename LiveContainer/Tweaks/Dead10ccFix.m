@@ -13,12 +13,15 @@
 #include "./proc_info.h"
 #include <fcntl.h>
 #include <spawn.h>
-#include <dlfcn.h>
 @import Foundation;
 @import UIKit;
 @import AVFoundation;
 
-//extern int _sqlite3_lockstate(const char *path, int pid);
+// Darwin's descriptor-owner query complements the process-owner query.
+// https://github.com/apple-oss-distributions/xnu/blob/main/bsd/sys/fcntl.h
+#ifndef F_OFD_GETLKPID
+#define F_OFD_GETLKPID 94
+#endif
 
 @interface Dead10ccFix : NSObject
 @property(nonatomic) BOOL methodInited;
@@ -104,7 +107,7 @@ void initDead10ccFix(void) {
         return nil;
     }
 
-    NSMutableSet *openFilePaths = [NSMutableSet set];
+    NSMutableDictionary<NSString *, NSNumber *> *openFileDescriptors = [NSMutableDictionary dictionary];
 
     if (pidinfo_size >= 8) {
         uint64_t count = pidinfo_size / sizeof(struct proc_fdinfo);
@@ -135,7 +138,7 @@ void initDead10ccFix(void) {
                 }
 
                 path = [path stringByStandardizingPath];
-                [openFilePaths addObject:path];
+                openFileDescriptors[path] = @(fdinfo->proc_fd);
             }
             fdinfo++;
         }
@@ -144,7 +147,7 @@ void initDead10ccFix(void) {
 
     NSMutableSet *lockedFilePaths = [NSMutableSet set];
 
-    for (NSString *path in openFilePaths) {
+    for (NSString *path in openFileDescriptors) {
         char *path_c = (char *)[path UTF8String];
         struct stat statbuf;
         if (stat(path_c, &statbuf) != 0) {
@@ -159,63 +162,38 @@ void initDead10ccFix(void) {
             continue;
         }
 
+        BOOL ignored = NO;
         for (NSString *ignoringPath in ignoring) {
-            if ([path hasPrefix:ignoringPath]) {
-                // _rbs_process_log with %{public}@: Ignoring file %{public}@ because it is in an allowed path:  %{public}@
-//                NSLog(@"Ignoring file %@ because it is in an allowed path: %@", path, ignoringPath);
-                continue;
+            if ([path isEqualToString:ignoringPath] ||
+                [path hasPrefix:[ignoringPath stringByAppendingString:@"/"]]) {
+                ignored = YES;
+                break;
             }
         }
+        if (ignored) continue;
 
-        if ([path hasSuffix:@"-shm"] || [path hasSuffix:@"-wal"] || [path hasSuffix:@"-journal"]) {
-            // _rbs_process_log with %{public}@ Ignoring SQLite journal file: %{public}@
-//            NSLog(@"Ignoring SQLite journal file: %@", path);
-            continue;
-        }
+        // SQLite WAL takes locks on its -shm file. Names cannot tell us whether
+        // a regular file is safe to suspend; inspect the actual lock instead.
+        unsigned char allowed = 0;
+        if (getxattr(path_c, "com.apple.runningboard.can-suspend-locked", &allowed, sizeof(allowed), 0, 0) == 1 && allowed != 0) continue;
+        // Query an existing descriptor. Opening and then closing another
+        // descriptor for the same inode releases this process's POSIX
+        // locks, even when those locks were acquired on a different fd.
+        int fd = openFileDescriptors[path].intValue;
+        struct stat current;
+        if (fstat(fd, &current) != 0 || current.st_dev != statbuf.st_dev ||
+            current.st_ino != statbuf.st_ino) continue;
 
-        if (getxattr(path_c, "com.apple.runningboard.can-suspend-locked", NULL, 0, 0, 0) == 1) {
-            char value;
-            getxattr(path_c, "com.apple.runningboard.can-suspend-locked", &value, sizeof(value), 0, 0);
-            if (value != 0) {
-                // _rbs_process_log with %{public}@ Ignoring file with can-suspend-locked: %{public}@
-//                NSLog(@"Ignoring file with can-suspend-locked: %@", path);
-                continue;
-            }
-        }
-        int (*_sqlite3_lockstate)(char*, int) = dlsym(RTLD_DEFAULT, "_sqlite3_lockstate");
-        int sqlite_lock = _sqlite3_lockstate ? _sqlite3_lockstate(path_c, pid) : -1;
-        if (sqlite_lock == 0) {
-            // _rbs_process_log with %{public}@ Ignoring unlocked SQLite database: %{public}@
-//            NSLog(@"Ignoring unlocked SQLite database: %@", path);
-            continue;
-        }
-
-        if (sqlite_lock == 1) {
-            // _rbs_process_log with %{public}@ Found locked SQLite database: %{public}@
-//            NSLog(@"Found locked SQLite database: %@", path);
-            [lockedFilePaths addObject:path];
-            
-        } else {
-            int fd = open(path_c, O_RDONLY | O_NOCTTY);
-            if (fd < 0) {
-                continue;
-            }
-
-            struct flock fl;
-            memset(&fl, 0, sizeof(fl));
-            fl.l_type = F_WRLCK;
-            fl.l_pid = pid;
-
-            int lock = fcntl(fd, F_GETLKPID, &fl);
-            close(fd);
-            if (lock == -1) {
-                continue;
-            }
-
-            if ((fl.l_type &~ F_UNLCK) == 1) {
-                // _rbs_process_log with %{public}@ Found locked file lock: %{public}@
-//                NSLog(@"Found locked file lock: %@", path);
+        // F_GETLKPID ignores POSIX locks owned by the caller. The OFD
+        // query uses the descriptor as owner and can see those locks; the
+        // process query in turn sees OFD locks (including SQLite's locks).
+        const int commands[] = { F_GETLKPID, F_OFD_GETLKPID };
+        for (NSUInteger index = 0; index < sizeof(commands) / sizeof(commands[0]); index++) {
+            struct flock fl = { .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_pid = pid };
+            if (fcntl(fd, commands[index], &fl) == 0 &&
+                (fl.l_type == F_RDLCK || fl.l_type == F_WRLCK)) {
                 [lockedFilePaths addObject:path];
+                break;
             }
         }
     }

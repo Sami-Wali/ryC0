@@ -22,6 +22,45 @@
 @interface BackgroundLockTests : XCTestCase
 @end
 @implementation BackgroundLockTests
+- (void)testWALDatabaseSharedMemoryLockIsProtected {
+    NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString];
+    sqlite3 *database = NULL;
+    XCTAssertEqual(sqlite3_open(path.fileSystemRepresentation, &database), SQLITE_OK);
+    @try {
+        XCTAssertEqual(sqlite3_exec(database, "PRAGMA journal_mode=WAL; CREATE TABLE sample (value); BEGIN IMMEDIATE; INSERT INTO sample VALUES (1);", NULL, NULL, NULL), SQLITE_OK);
+        [[Dead10ccFix new] handleAppDidEnterBackgroundReal];
+        unsigned char allowed = 0;
+        NSString *sharedMemory = [path stringByAppendingString:@"-shm"];
+        XCTAssertEqual(getxattr(sharedMemory.fileSystemRepresentation, "com.apple.runningboard.can-suspend-locked", &allowed, sizeof(allowed), 0, 0), 1);
+        XCTAssertEqual(allowed, 1);
+    } @finally {
+        sqlite3_exec(database, "ROLLBACK", NULL, NULL, NULL);
+        sqlite3_close(database);
+        [NSFileManager.defaultManager removeItemAtPath:path error:nil];
+    }
+}
+- (void)testOrdinaryFileLockIsProtectedRegardlessOfFilename {
+    NSString *path = [[NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString] stringByAppendingString:@"-journal"];
+    int fd = open(path.fileSystemRepresentation, O_CREAT | O_RDWR, 0600);
+    XCTAssertGreaterThanOrEqual(fd, 0);
+    @try {
+        struct flock lock = { .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0 };
+        XCTAssertEqual(fcntl(fd, F_SETLK, &lock), 0);
+        struct flock before = { .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0, .l_pid = getpid() };
+        XCTAssertEqual(fcntl(fd, F_OFD_GETLKPID, &before), 0);
+        XCTAssertEqual(before.l_type, F_WRLCK);
+        [[Dead10ccFix new] handleAppDidEnterBackgroundReal];
+        struct flock held = { .l_type = F_WRLCK, .l_whence = SEEK_SET, .l_start = 0, .l_len = 0, .l_pid = getpid() };
+        XCTAssertEqual(fcntl(fd, F_OFD_GETLKPID, &held), 0);
+        XCTAssertEqual(held.l_type, F_WRLCK, @"Protection must never release the guest's lock");
+        unsigned char allowed = 0;
+        XCTAssertEqual(getxattr(path.fileSystemRepresentation, "com.apple.runningboard.can-suspend-locked", &allowed, sizeof(allowed), 0, 0), 1);
+        XCTAssertEqual(allowed, 1);
+    } @finally {
+        close(fd);
+        [NSFileManager.defaultManager removeItemAtPath:path error:nil];
+    }
+}
 - (void)testLockedDatabaseIsMarkedBeforeSuspension {
     NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:NSUUID.UUID.UUIDString];
     sqlite3 *database = NULL;

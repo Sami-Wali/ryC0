@@ -55,6 +55,12 @@ It does not activate audio or change the host presenter.
 isolated test host. It checks UIKit/legacy notification delivery, an interruption
 without a second background event, ignored interruption-end/foreground events,
 and the suspension attribute on an actual exclusively locked SQLite database.
+The general lock scanner also covers WAL shared-memory locks and ordinary POSIX
+file locks regardless of filename. It queries existing descriptors using both
+process-owner and descriptor-owner lock queries, without reopening/closing files
+or relying on the private SQLite lock probe. Tests verify that scanning preserves
+the original lock. WAL/SHM and `-journal` filename cases failed before this change
+and pass after it; neither the guest nor the interrupting app is matched by name.
 The simulator cannot verify RunningBoard's physical-device suspension policy.
 
 For the reported regression, start YouTube Music playback, switch to TikTok and
